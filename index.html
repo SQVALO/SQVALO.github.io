@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il Mio Diario</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --leather-dark: #2a1a0e;
+    --leather-mid: #3d2410;
+    --leather-light: #5c3a1e;
+    --parchment: #f0e6c8;
+    --parchment-dark: #e8d9b0;
+    --parchment-edge: #d4c090;
+    --ink: #1a1008;
+    --ink-faded: #2d1f0a;
+    --crimson: #8b1a1a;
+    --crimson-bright: #a52020;
+    --crimson-shadow: #5a0f0f;
+    --gold: #b8860b;
+    --gold-light: #d4a017;
+    --stitch: #c8a060;
+  }
+
+  html, body {
+    min-height: 100%;
+    font-family: 'IM Fell English', Georgia, serif;
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+  body {
+    background: radial-gradient(ellipse at center, #2a1808 0%, #110a04 60%, #080402 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px 80px;
+  }
+
+  /* ── BOOK WRAPPER ── */
+  .book-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 780px;
+    overflow: visible;
+  }
+
+  /* ── COVER ── */
+  .cover {
+    position: relative;
+    background: var(--leather-mid);
+    border-radius: 4px 12px 12px 4px;
+    padding: 40px 50px 50px 60px;
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow:
+      -8px 0 0 var(--leather-dark), -12px 4px 0 #1a0c05,
+      0 8px 32px rgba(0,0,0,0.7), 0 2px 8px rgba(0,0,0,0.5),
+      inset 2px 2px 8px rgba(255,200,120,0.06),
+      inset -2px -2px 12px rgba(0,0,0,0.4);
+    overflow: visible;
+  }
+  .cover::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 4px 12px 12px 4px;
+    background:
+      repeating-linear-gradient(92deg, transparent 0px, transparent 3px, rgba(0,0,0,0.08) 3px, rgba(0,0,0,0.08) 4px),
+      repeating-linear-gradient(2deg, transparent 0px, transparent 8px, rgba(255,200,120,0.02) 8px, rgba(255,200,120,0.02) 9px);
+    pointer-events: none;
+  }
+  .cover::after {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 28px;
+    border-radius: 4px 0 0 4px;
+    background: linear-gradient(to right, var(--leather-dark) 0%, var(--leather-mid) 60%, var(--leather-light) 100%);
+    box-shadow: inset -3px 0 6px rgba(0,0,0,0.3);
+  }
+  .cover:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      -8px 0 0 var(--leather-dark), -12px 6px 0 #1a0c05,
+      0 16px 48px rgba(0,0,0,0.8), 0 4px 12px rgba(0,0,0,0.5),
+      inset 2px 2px 8px rgba(255,200,120,0.06),
+      inset -2px -2px 12px rgba(0,0,0,0.4);
+  }
+  .spine-stitches {
+    position: absolute; left: 14px; top: 40px; bottom: 40px; width: 4px;
+    display: flex; flex-direction: column; justify-content: space-around; align-items: center; z-index: 2;
+  }
+  .stitch { width: 2px; height: 10px; background: var(--stitch); opacity: 0.6; border-radius: 1px; }
+  .cover-frame {
+    position: absolute; inset: 20px 24px 24px 36px;
+    border: 1.5px solid rgba(184,134,11,0.35); border-radius: 6px; pointer-events: none;
+  }
+  .cover-frame::before {
+    content: ''; position: absolute; inset: 5px;
+    border: 1px solid rgba(184,134,11,0.18); border-radius: 4px;
+  }
+  .corner { position: absolute; width: 28px; height: 28px; border-color: rgba(184,134,11,0.5); border-style: solid; }
+  .corner-tl { top: 26px; left: 42px; border-width: 2px 0 0 2px; border-radius: 3px 0 0 0; }
+  .corner-tr { top: 26px; right: 30px; border-width: 2px 2px 0 0; border-radius: 0 3px 0 0; }
+  .corner-bl { bottom: 30px; left: 42px; border-width: 0 0 2px 2px; border-radius: 0 0 0 3px; }
+  .corner-br { bottom: 30px; right: 30px; border-width: 0 2px 2px 0; border-radius: 0 0 3px 0; }
+  .cover-title {
+    font-family: 'IM Fell English SC', serif;
+    font-size: clamp(22px, 4vw, 32px); color: var(--gold-light);
+    text-align: center; line-height: 1.4; letter-spacing: 0.04em;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8), 0 0 20px rgba(184,134,11,0.2);
+    margin-bottom: 20px; position: relative; z-index: 1;
+  }
+  .cover-divider {
+    width: 160px; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 12px auto; opacity: 0.6;
+  }
+  .cover-subtitle {
+    font-family: 'IM Fell English', serif; font-style: italic; font-size: 13px;
+    color: rgba(212,160,23,0.65); text-align: center; letter-spacing: 0.08em;
+    position: relative; z-index: 1;
+  }
+  .cover-emblem {
+    font-size: 52px; margin-bottom: 24px; opacity: 0.7;
+    filter: sepia(1) hue-rotate(-10deg) brightness(0.8); position: relative; z-index: 1;
+  }
+  .cover-cta {
+    margin-top: 36px; font-style: italic; font-size: 12px;
+    color: rgba(212,160,23,0.4); letter-spacing: 0.12em; position: relative; z-index: 1;
+    animation: pulse-cta 3s ease-in-out infinite;
+  }
+  @keyframes pulse-cta { 0%,100%{opacity:.4} 50%{opacity:.8} }
+
+  /* Pulsante modifica copertina */
+  .cover-edit-btn {
+    position: absolute; top: 14px; right: 14px; z-index: 10;
+    background: rgba(184,134,11,0.15); border: 1px solid rgba(184,134,11,0.4);
+    border-radius: 4px; padding: 5px 10px; cursor: pointer;
+    font-family: 'IM Fell English', serif; font-size: 11px;
+    color: rgba(212,160,23,0.7); letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .cover-edit-btn:hover { background: rgba(184,134,11,0.28); color: var(--gold-light); }
+
+  /* ── BOOKMARK ── */
+  .bookmark {
+    position: absolute; top: -18px; right: 80px; width: 28px; z-index: 10;
+    cursor: pointer; transition: transform 0.2s ease;
+    filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+  }
+  .bookmark:hover { transform: translateY(-4px); }
+  .bookmark-ribbon {
+    width: 28px; height: 200px; position: relative; border-radius: 2px 2px 0 0;
+    background: linear-gradient(to bottom, var(--crimson-bright) 0%, var(--crimson) 40%, var(--crimson-shadow) 100%);
+  }
+  .bookmark-ribbon::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+    border-left: 14px solid var(--crimson); border-right: 14px solid var(--crimson);
+    border-bottom: 16px solid transparent;
+  }
+  .bookmark-ribbon::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 8px; height: 100%; background: rgba(255,255,255,0.06); border-radius: 4px;
+  }
+  .diary-open .bookmark { display: none; }
+
+  /* ── DIARY ── */
+  .diary {
+    display: none;
+    position: relative;
+    background: var(--parchment);
+    border-radius: 4px 8px 8px 4px;
+    min-height: 600px;
+    box-shadow:
+      -8px 0 0 var(--leather-dark), -12px 4px 0 #1a0c05,
+      0 8px 32px rgba(0,0,0,0.7),
+      4px 0 0 var(--parchment-edge), 8px 2px 0 rgba(200,170,100,0.3),
+      inset 40px 0 60px rgba(150,110,50,0.15);
+    overflow: visible;
+    animation: page-open 0.5s ease forwards;
+  }
+  .diary.open { display: flex; flex-direction: column; }
+  @keyframes page-open {
+    from { opacity: 0; transform: rotateY(-8deg) translateX(-20px); }
+    to   { opacity: 1; transform: rotateY(0deg)  translateX(0); }
+  }
+  .diary-texture {
+    position: absolute; inset: 0; border-radius: 4px 8px 8px 4px;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"),
+      repeating-linear-gradient(180deg, transparent 0px, transparent 31px, rgba(150,110,50,0.12) 31px, rgba(150,110,50,0.12) 32px);
+    pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .diary-spine-shadow {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 60px;
+    border-radius: 4px 0 0 4px;
+    background: linear-gradient(to right, rgba(100,70,20,0.22) 0%, rgba(100,70,20,0.08) 50%, transparent 100%);
+    pointer-events: none; z-index: 0;
+  }
+  .diary-margin {
+    position: absolute; left: 72px; top: 0; bottom: 0;
+    width: 1.5px; background: rgba(180,40,40,0.25); z-index: 1;
+  }
+  .page-stack {
+    position: absolute; right: -4px; top: 4px; bottom: 4px; width: 8px;
+    background: repeating-linear-gradient(to bottom, var(--parchment-edge) 0px, var(--parchment-edge) 1px, #e0d0a0 1px, #e0d0a0 2px);
+    border-radius: 0 2px 2px 0; z-index: -1;
+  }
+
+  /* ── TABS ── */
+  .tabs-container {
+    position: absolute; right: -36px; top: 40px;
+    display: flex; flex-direction: column; gap: 3px; z-index: 5;
+  }
+  .tab-btn {
+    width: 36px; height: 36px; background: var(--parchment-dark); border: none;
+    border-radius: 0 6px 6px 0; cursor: pointer; font-size: 11px;
+    font-family: 'IM Fell English SC', serif; color: var(--ink-faded);
+    transition: all 0.15s ease; box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tab-btn:hover, .tab-btn.active {
+    background: var(--parchment); color: var(--crimson);
+    box-shadow: 3px 2px 8px rgba(0,0,0,0.4); transform: translateX(2px);
+  }
+  .tab-btn.active { font-weight: bold; }
+
+  /* ── PAGE CONTENT ── */
+  .page-content {
+    position: relative; z-index: 2;
+    padding: 48px 52px 52px 90px;
+    min-height: 600px; flex: 1;
+  }
+  .page-header { text-align: center; margin-bottom: 32px; padding-bottom: 16px; border-bottom: 1px solid rgba(100,70,20,0.25); }
+  .session-label { font-family: 'IM Fell English SC', serif; font-size: 11px; color: var(--crimson); letter-spacing: 0.2em; margin-bottom: 8px; opacity: 0.8; }
+  .session-title { font-family: 'IM Fell English SC', serif; font-size: clamp(20px,3vw,28px); color: var(--ink); line-height: 1.3; }
+  .ornament { font-size: 22px; color: rgba(100,70,20,0.4); margin: 8px 0; display: block; }
+  .page-text { font-size: 15.5px; line-height: 2.0; color: var(--ink-faded); text-align: justify; hyphens: auto; }
+  .page-text p { margin-bottom: 1.4em; text-indent: 2em; }
+  .page-text p:first-child { text-indent: 0; }
+  .drop-cap::first-letter { font-family: 'IM Fell English SC', serif; font-size: 4.2em; float: left; line-height: 0.75; padding-right: 8px; padding-top: 4px; color: var(--ink); }
+  .italic-note { font-style: italic; color: rgba(40,25,10,0.55); font-size: 14px; margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(100,70,20,0.2); text-align: center; }
+  .page-number { position: absolute; bottom: 28px; right: 52px; font-family: 'IM Fell English SC', serif; font-size: 12px; color: rgba(80,55,20,0.45); letter-spacing: 0.1em; }
+
+  /* ── NAV ── */
+  .page-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(100,70,20,0.2); }
+  .nav-btn {
+    background: none; border: 1px solid rgba(100,70,20,0.35); border-radius: 3px;
+    padding: 7px 18px; font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: 13px; color: var(--ink-faded); cursor: pointer; transition: all 0.15s;
+  }
+  .nav-btn:hover { background: rgba(100,70,20,0.08); border-color: rgba(100,70,20,0.6); color: var(--crimson); }
+  .nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .nav-dots { display: flex; gap: 6px; align-items: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(100,70,20,0.25); cursor: pointer; transition: all 0.15s; }
+  .dot.active { background: var(--crimson); transform: scale(1.3); }
+  .back-btn { margin-top: 24px; display: block; text-align: center; background: none; border: none; font-family: 'IM Fell English', serif; font-style: italic; font-size: 12px; color: rgba(80,55,20,0.4); cursor: pointer; letter-spacing: 0.1em; transition: color 0.15s; }
+  .back-btn:hover { color: var(--crimson); }
+  .page-transition { animation: fade-page 0.35s ease; }
+  @keyframes fade-page { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── BARRA AZIONI PAGINA ── */
+  .page-actions {
+    display: flex; gap: 8px; justify-content: flex-end;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .action-btn {
+    background: none; border: 1px solid rgba(100,70,20,0.35); border-radius: 3px;
+    padding: 5px 12px; font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: 12px; color: var(--ink-faded); cursor: pointer; transition: all 0.15s;
+  }
+  .action-btn:hover { background: rgba(100,70,20,0.1); color: var(--crimson); border-color: rgba(100,70,20,0.6); }
+  .action-btn.danger:hover { color: #8b1a1a; border-color: #8b1a1a; background: rgba(139,26,26,0.06); }
+  .action-btn.primary { border-color: rgba(184,134,11,0.5); color: var(--gold); }
+  .action-btn.primary:hover { background: rgba(184,134,11,0.1); color: var(--gold-light); }
+
+  /* ── INDICE ── */
+  .index-page .index-title { font-family: 'IM Fell English SC', serif; font-size: clamp(18px,2.5vw,24px); color: var(--ink); text-align: center; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .index-list { list-style: none; }
+  .index-list li { display: flex; align-items: baseline; gap: 6px; padding: 6px 0; border-bottom: 1px dotted rgba(100,70,20,0.2); cursor: pointer; transition: color 0.15s; }
+  .index-list li:last-child { border-bottom: none; }
+  .index-list li:hover .index-entry-title, .index-list li:hover .index-entry-label { color: var(--crimson); }
+  .index-entry-num { font-family: 'IM Fell English SC', serif; font-size: 12px; color: var(--crimson); opacity: 0.7; min-width: 28px; flex-shrink: 0; }
+  .index-entry-label { font-size: 12px; color: rgba(45,31,10,0.6); font-style: italic; white-space: nowrap; transition: color 0.15s; }
+  .index-entry-dots { flex: 1; border-bottom: 1px dotted rgba(100,70,20,0.3); height: 1em; margin: 0 4px; }
+  .index-entry-title { font-size: 14px; color: var(--ink-faded); text-align: right; transition: color 0.15s; }
+
+  /* ── MODAL BASE ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(10,5,0,0.82); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--parchment);
+    border-radius: 6px; padding: 32px 36px; width: 100%; max-width: 620px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,230,150,0.15);
+    position: relative;
+  }
+  .modal::before {
+    content: ''; position: absolute; inset: 0; border-radius: 6px;
+    background: repeating-linear-gradient(180deg, transparent 0px, transparent 31px, rgba(150,110,50,0.1) 31px, rgba(150,110,50,0.1) 32px);
+    pointer-events: none;
+  }
+  .modal-title { font-family: 'IM Fell English SC', serif; font-size: 20px; color: var(--ink); margin-bottom: 24px; text-align: center; letter-spacing: 0.04em; }
+  .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 18px; cursor: pointer; color: rgba(80,55,20,0.5); transition: color 0.15s; }
+  .modal-close:hover { color: var(--crimson); }
+
+  /* ── FORM ── */
+  .field { margin-bottom: 18px; position: relative; z-index: 1; }
+  .field label { display: block; font-family: 'IM Fell English SC', serif; font-size: 11px; letter-spacing: 0.15em; color: var(--crimson); margin-bottom: 6px; opacity: 0.85; }
+  .field input, .field textarea {
+    width: 100%; background: rgba(255,240,200,0.5);
+    border: 1px solid rgba(100,70,20,0.4); border-radius: 3px;
+    padding: 9px 12px; font-family: 'IM Fell English', serif; font-size: 14px;
+    color: var(--ink); outline: none; transition: border-color 0.15s;
+    resize: vertical;
+  }
+  .field input:focus, .field textarea:focus { border-color: rgba(184,134,11,0.6); background: rgba(255,245,210,0.7); }
+  .field textarea { min-height: 200px; line-height: 1.6; }
+  .field-hint { font-size: 11px; color: rgba(80,55,20,0.5); font-style: italic; margin-top: 4px; }
+
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
+  .btn {
+    padding: 8px 22px; border-radius: 3px; cursor: pointer;
+    font-family: 'IM Fell English', serif; font-size: 13px; font-style: italic;
+    letter-spacing: 0.04em; transition: all 0.15s; border: 1px solid;
+  }
+  .btn-primary { background: rgba(184,134,11,0.15); border-color: rgba(184,134,11,0.5); color: var(--gold); }
+  .btn-primary:hover { background: rgba(184,134,11,0.25); color: var(--gold-light); }
+  .btn-ghost { background: none; border-color: rgba(100,70,20,0.35); color: var(--ink-faded); }
+  .btn-ghost:hover { background: rgba(100,70,20,0.08); color: var(--crimson); }
+  .btn-danger { background: none; border-color: rgba(139,26,26,0.35); color: var(--crimson); }
+  .btn-danger:hover { background: rgba(139,26,26,0.1); }
+
+  /* ── TOOLBAR EXPORT/IMPORT ── */
+  .top-toolbar {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .toolbar-btn {
+    background: rgba(255,230,150,0.06); border: 1px solid rgba(184,134,11,0.25);
+    border-radius: 4px; padding: 7px 16px; cursor: pointer;
+    font-family: 'IM Fell English', serif; font-style: italic; font-size: 12px;
+    color: rgba(212,160,23,0.6); letter-spacing: 0.06em; transition: all 0.15s;
+  }
+  .toolbar-btn:hover { background: rgba(184,134,11,0.12); color: var(--gold-light); border-color: rgba(184,134,11,0.5); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--leather-mid); color: rgba(212,160,23,0.9);
+    padding: 10px 24px; border-radius: 4px; font-style: italic; font-size: 13px;
+    border: 1px solid rgba(184,134,11,0.3); z-index: 200;
+    transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0;
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    body { padding: 20px 10px 60px; }
+    .cover { padding: 32px 24px 36px 36px; min-height: 420px; }
+    .cover-emblem { font-size: 38px; margin-bottom: 16px; }
+    .cover-cta { margin-top: 24px; }
+    .bookmark { right: 36px; }
+    .diary { border-radius: 2px 4px 4px 2px; }
+    .diary-margin { display: none; }
+    .tabs-container {
+      position: static !important; flex-direction: row; flex-wrap: wrap;
+      justify-content: center; gap: 4px; padding: 10px 12px;
+      border-top: 1px solid rgba(100,70,20,0.2);
+      background: var(--parchment-dark); border-radius: 0 0 4px 4px; width: 100%;
+    }
+    .tab-btn { width: 38px; height: 38px; border-radius: 4px; font-size: 11px; touch-action: manipulation; }
+    .tab-btn:hover, .tab-btn.active { transform: none; }
+    .page-content { padding: 28px 18px 36px 18px; min-height: unset; }
+    .page-text { font-size: 14.5px; line-height: 1.85; }
+    .page-text p { text-indent: 1.2em; }
+    .drop-cap::first-letter { font-size: 3.2em; }
+    .page-number { right: 18px; bottom: 14px; }
+    .nav-btn { padding: 6px 12px; font-size: 12px; }
+    .index-entry-dots, .index-entry-label { display: none; }
+    .page-stack { display: none; }
+    .modal { padding: 24px 18px; }
+    .top-toolbar { gap: 6px; }
+    .toolbar-btn { font-size: 11px; padding: 6px 10px; }
+  }
+  @media (min-width: 601px) and (max-width: 768px) {
+    body { padding: 30px 16px 60px; }
+    .page-content { padding: 40px 36px 44px 60px; }
+  }
+
+  /* ── RICH TEXT EDITOR ── */
+  .rte-wrapper { position: relative; z-index: 1; }
+
+  .rte-toolbar {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    padding: 8px 10px; margin-bottom: 0;
+    background: rgba(200,170,100,0.18);
+    border: 1px solid rgba(100,70,20,0.35);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+  }
+  .rte-btn {
+    background: rgba(255,240,200,0.5); border: 1px solid rgba(100,70,20,0.3);
+    border-radius: 3px; padding: 4px 10px; cursor: pointer;
+    font-family: 'IM Fell English', serif; font-size: 12px; color: var(--ink-faded);
+    transition: all 0.15s; line-height: 1.4; white-space: nowrap;
+  }
+  .rte-btn:hover  { background: rgba(184,134,11,0.18); color: var(--crimson); border-color: rgba(184,134,11,0.5); }
+  .rte-btn.active { background: rgba(184,134,11,0.22); color: var(--gold); border-color: rgba(184,134,11,0.6); }
+  .rte-btn b { font-weight: bold; }
+  .rte-btn i { font-style: italic; }
+  .rte-sep { width: 1px; background: rgba(100,70,20,0.25); margin: 2px 2px; align-self: stretch; }
+
+  .rte-editor {
+    width: 100%; min-height: 220px;
+    background: rgba(255,245,210,0.6);
+    border: 1px solid rgba(100,70,20,0.4);
+    border-radius: 0 0 4px 4px;
+    padding: 14px 16px;
+    font-family: 'IM Fell English', Georgia, serif;
+    font-size: 14px; line-height: 1.75; color: var(--ink);
+    outline: none; overflow-y: auto;
+  }
+  .rte-editor:focus { border-color: rgba(184,134,11,0.6); background: rgba(255,248,220,0.75); }
+  .rte-editor p { margin-bottom: 0.9em; text-indent: 1.4em; }
+  .rte-editor p:first-child { text-indent: 0; }
+  .rte-editor .drop-cap::first-letter {
+    font-family: 'IM Fell English SC', serif; font-size: 3.2em;
+    float: left; line-height: 0.78; padding-right: 6px; padding-top: 3px; color: var(--ink);
+  }
+  .rte-editor .italic-note {
+    font-style: italic; color: rgba(40,25,10,0.5); font-size: 13px;
+    margin-top: 12px; padding-top: 10px;
+    border-top: 1px solid rgba(100,70,20,0.2); text-align: center;
+  }
+  .rte-hint {
+    font-size: 11px; color: rgba(80,55,20,0.45); font-style: italic;
+    margin-top: 5px; line-height: 1.5;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR SUPERIORE -->
+<div class="top-toolbar">
+  <button class="toolbar-btn" onclick="exportJSON()">⬇ Esporta JSON</button>
+  <button class="toolbar-btn" onclick="document.getElementById('import-input').click()">⬆ Importa JSON</button>
+  <input type="file" id="import-input" accept=".json" style="display:none" onchange="importJSON(event)">
+</div>
+
+<div class="book-wrapper" id="book-wrapper">
+
+  <div class="bookmark" id="bookmark" title="Vai all'ultima voce">
+    <div class="bookmark-ribbon"></div>
+  </div>
+
+  <!-- COPERTINA -->
+  <div class="cover" id="cover" onclick="openDiary()">
+    <div class="spine-stitches" id="stitches"></div>
+    <div class="cover-frame"></div>
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+    <button class="cover-edit-btn" onclick="event.stopPropagation(); openCoverModal()">✎ modifica copertina</button>
+    <div class="cover-emblem" id="cover-emblem">⚓</div>
+    <div class="cover-title"   id="cover-title">Il Mio Diario</div>
+    <div class="cover-divider"></div>
+    <div class="cover-subtitle" id="cover-subtitle">Le mie cronache personali</div>
+    <div class="cover-divider"></div>
+    <div class="cover-cta">~ Tocca per aprire ~</div>
+  </div>
+
+  <!-- DIARIO -->
+  <div class="diary" id="diary">
+    <div class="diary-texture"></div>
+    <div class="diary-spine-shadow"></div>
+    <div class="diary-margin"></div>
+    <div class="page-stack"></div>
+
+    <div class="page-content">
+      <div class="page-actions" id="page-actions"></div>
+      <div id="page-body"></div>
+
+      <div class="page-nav">
+        <button class="nav-btn" id="btn-prev" onclick="changePage(-1)">← Indietro</button>
+        <div class="nav-dots" id="nav-dots"></div>
+        <button class="nav-btn" id="btn-next" onclick="changePage(1)">Avanti →</button>
+      </div>
+      <button class="back-btn" onclick="closeDiary()">✕ chiudi il diario</button>
+    </div>
+
+    <div class="page-number" id="page-num"></div>
+    <div class="tabs-container" id="tabs"></div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- MODAL: MODIFICA COPERTINA -->
+<div class="modal-overlay" id="modal-cover">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-cover')">✕</button>
+    <div class="modal-title">Modifica Copertina</div>
+    <div class="field">
+      <label>Emblema (emoji)</label>
+      <input type="text" id="f-emblem" maxlength="4" placeholder="⚓">
+    </div>
+    <div class="field">
+      <label>Titolo del Diario</label>
+      <input type="text" id="f-title" placeholder="Il Mio Diario">
+    </div>
+    <div class="field">
+      <label>Sottotitolo</label>
+      <input type="text" id="f-subtitle" placeholder="Le mie cronache personali">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-cover')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveCover()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AGGIUNGI / MODIFICA VOCE -->
+<div class="modal-overlay" id="modal-page">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-page')">✕</button>
+    <div class="modal-title" id="modal-page-title">Nuova Voce</div>
+    <div class="field">
+      <label>Etichetta breve</label>
+      <input type="text" id="f-label" placeholder="es. Sessione I, Prologo…">
+    </div>
+    <div class="field">
+      <label>Titolo</label>
+      <input type="text" id="f-ptitle" placeholder="es. La Notte del Naufragio">
+    </div>
+    <div class="field">
+      <label>Testo della voce</label>
+      <div class="rte-wrapper">
+        <div class="rte-toolbar" id="rte-toolbar">
+          <button class="rte-btn" onclick="rteBlock('drop-cap')"    title="Capolettera decorativo sul primo paragrafo">❦ Capolettera</button>
+          <button class="rte-btn" onclick="rteBlock('p')"           title="Paragrafo normale">¶ Paragrafo</button>
+          <button class="rte-btn" onclick="rteBlock('italic-note')" title="Nota riassuntiva in fondo alla pagina">— Riassunto</button>
+          <div class="rte-sep"></div>
+          <button class="rte-btn" onclick="rteInline('em')"   title="Corsivo"><i>C</i></button>
+          <button class="rte-btn" onclick="rteInline('strong')" title="Grassetto"><b>G</b></button>
+          <div class="rte-sep"></div>
+          <button class="rte-btn" onclick="rteNewPara()"      title="Vai a capo / nuovo paragrafo">↵ Nuovo §</button>
+        </div>
+        <div class="rte-editor" id="rte-editor" contenteditable="true" spellcheck="true"></div>
+      </div>
+      <div class="rte-hint">
+        Scrivi il testo, selezionalo e premi i pulsanti per formattarlo. <b>¶ Paragrafo</b> = testo normale · <b>❦ Capolettera</b> = primo paragrafo decorato · <b>— Riassunto</b> = nota finale · <b>↵ Nuovo §</b> = inizia un nuovo paragrafo.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-page')">Annulla</button>
+      <button class="btn btn-primary" id="modal-page-save" onclick="savePage()">Salva Voce</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONFERMA ELIMINAZIONE -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal" style="max-width:400px; text-align:center;">
+    <div class="modal-title" style="margin-bottom:12px;">Eliminare questa voce?</div>
+    <p style="font-style:italic; color:var(--ink-faded); font-size:14px; margin-bottom:24px;">L'azione non può essere annullata.</p>
+    <div class="modal-actions" style="justify-content:center;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Annulla</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Elimina</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   STATO APPLICAZIONE
+══════════════════════════════════════════════════ */
+const STORAGE_KEY = 'diario_data_v1';
+
+let state = {
+  cover: {
+    emblem: '⚓',
+    title: 'Il Mio Diario',
+    subtitle: 'Le mie cronache personali'
+  },
+  pages: [
+    {
+      id: uid(),
+      label: 'Prologo',
+      title: 'Benvenuto nel tuo diario',
+      text: `<p class="drop-cap">Questa è la tua prima voce. Premi <em>✎ Modifica</em> per cambiarla, oppure <em>+ Nuova Voce</em> per aggiungerne un'altra. Puoi scrivere liberamente usando i tag HTML indicati nel campo testo.</p>
+<p>Ogni voce che crei viene salvata automaticamente nel browser. Usa i pulsanti in cima alla pagina per esportare il tuo diario come file JSON o importarne uno esistente.</p>
+<p class="italic-note">— Mini-riassunto: prima apertura · tutto pronto · buona scrittura.</p>`
+    }
+  ]
+};
+
+let currentPage = 0; // 0 = indice, 1+ = voci
+let editingPageId = null;
+let deletingPageId = null;
+
+/* ══════════════════════════════════════════════════
+   PERSISTENZA
+══════════════════════════════════════════════════ */
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function saveToStorage() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.pages) state = parsed;
+    }
+  } catch(e) {}
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.cover.title || 'diario') + '.json';
+  a.click();
+  showToast('Diario esportato ✓');
+}
+
+function importJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!parsed.pages) throw new Error();
+      state = parsed;
+      saveToStorage();
+      currentPage = 0;
+      renderCover();
+      renderPage();
+      showToast('Diario importato ✓');
+    } catch {
+      showToast('File non valido ✗');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+/* ══════════════════════════════════════════════════
+   RENDERING
+══════════════════════════════════════════════════ */
+function renderCover() {
+  document.getElementById('cover-emblem').textContent  = state.cover.emblem  || '⚓';
+  document.getElementById('cover-title').textContent   = state.cover.title   || 'Il Mio Diario';
+  document.getElementById('cover-subtitle').textContent = state.cover.subtitle || '';
+  document.title = state.cover.title || 'Il Mio Diario';
+}
+
+function buildIndexHTML() {
+  const rows = state.pages.map((p, i) => `
+    <li onclick="goToPage(${i + 1})">
+      <span class="index-entry-num">${toRoman(i + 1)}</span>
+      <span class="index-entry-label">${esc(p.label)}</span>
+      <span class="index-entry-dots"></span>
+      <span class="index-entry-title">${esc(p.title)}</span>
+    </li>`).join('');
+  return `
+    <div class="index-page page-transition">
+      <div class="index-title">Indice delle Cronache</div>
+      <span class="ornament">❧</span>
+      <ul class="index-list">${rows}</ul>
+    </div>`;
+}
+
+function renderPage() {
+  const body   = document.getElementById('page-body');
+  const acts   = document.getElementById('page-actions');
+  const pageNum = document.getElementById('page-num');
+
+  if (currentPage === 0) {
+    // INDICE
+    body.innerHTML = buildIndexHTML();
+    pageNum.textContent = '— ☰ —';
+    acts.innerHTML = `
+      <button class="action-btn primary" onclick="openNewPageModal()">+ Nuova Voce</button>`;
+  } else {
+    const p = state.pages[currentPage - 1];
+    if (!p) { goToPage(0); return; }
+    body.innerHTML = `
+      <div class="page-header page-transition">
+        <div class="session-label">${esc(p.label)}</div>
+        <div class="session-title">${esc(p.title)}</div>
+        <span class="ornament">❧</span>
+      </div>
+      <div class="page-text page-transition">${p.text}</div>`;
+    pageNum.textContent = '— ' + toRoman(currentPage) + ' —';
+    acts.innerHTML = `
+      <button class="action-btn" onclick="openEditPageModal('${p.id}')">✎ Modifica</button>
+      <button class="action-btn danger" onclick="openDeleteModal('${p.id}')">✕ Elimina</button>
+      <button class="action-btn primary" onclick="openNewPageModal()">+ Nuova Voce</button>`;
+  }
+
+  document.getElementById('btn-prev').disabled = currentPage === 0;
+  document.getElementById('btn-next').disabled = currentPage === state.pages.length;
+  buildTabs();
+  buildDots();
+}
+
+function buildTabs() {
+  const tc = document.getElementById('tabs');
+  tc.innerHTML = '';
+  // Tab indice
+  const t0 = document.createElement('button');
+  t0.className = 'tab-btn' + (currentPage === 0 ? ' active' : '');
+  t0.textContent = '☰'; t0.title = 'Indice';
+  t0.onclick = () => goToPage(0);
+  tc.appendChild(t0);
+  // Tab voci
+  state.pages.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (currentPage === i + 1 ? ' active' : '');
+    btn.textContent = toRoman(i + 1);
+    btn.title = p.label + ' — ' + p.title;
+    btn.onclick = () => goToPage(i + 1);
+    tc.appendChild(btn);
+  });
+}
+
+function buildDots() {
+  const nd = document.getElementById('nav-dots');
+  nd.innerHTML = '';
+  const total = state.pages.length + 1;
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === currentPage ? ' active' : '');
+    d.onclick = () => goToPage(i);
+    nd.appendChild(d);
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   NAVIGAZIONE
+══════════════════════════════════════════════════ */
+function goToPage(i) {
+  const max = state.pages.length;
+  currentPage = Math.max(0, Math.min(i, max));
+  renderPage();
+}
+
+function changePage(dir) {
+  goToPage(currentPage + dir);
+}
+
+function openDiary() {
+  document.getElementById('cover').style.display = 'none';
+  document.getElementById('book-wrapper').classList.add('diary-open');
+  document.getElementById('diary').classList.add('open');
+  renderPage();
+}
+
+function closeDiary() {
+  document.getElementById('diary').classList.remove('open');
+  document.getElementById('book-wrapper').classList.remove('diary-open');
+  document.getElementById('cover').style.display = 'flex';
+}
+
+/* ══════════════════════════════════════════════════
+   MODALI
+══════════════════════════════════════════════════ */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openCoverModal() {
+  document.getElementById('f-emblem').value   = state.cover.emblem  || '';
+  document.getElementById('f-title').value    = state.cover.title   || '';
+  document.getElementById('f-subtitle').value = state.cover.subtitle || '';
+  openModal('modal-cover');
+}
+
+function saveCover() {
+  state.cover.emblem   = document.getElementById('f-emblem').value.trim()   || '⚓';
+  state.cover.title    = document.getElementById('f-title').value.trim()    || 'Il Mio Diario';
+  state.cover.subtitle = document.getElementById('f-subtitle').value.trim();
+  saveToStorage();
+  renderCover();
+  closeModal('modal-cover');
+  showToast('Copertina salvata ✓');
+}
+
+function openNewPageModal() {
+  editingPageId = null;
+  document.getElementById('modal-page-title').textContent = 'Nuova Voce';
+  document.getElementById('modal-page-save').textContent  = 'Aggiungi Voce';
+  document.getElementById('f-label').value  = '';
+  document.getElementById('f-ptitle').value = '';
+  rteSetContent('<p class="drop-cap">Scrivi qui il tuo testo...</p>');
+  openModal('modal-page');
+  setTimeout(() => document.getElementById('rte-editor').focus(), 100);
+}
+
+function openEditPageModal(id) {
+  const p = state.pages.find(x => x.id === id);
+  if (!p) return;
+  editingPageId = id;
+  document.getElementById('modal-page-title').textContent = 'Modifica Voce';
+  document.getElementById('modal-page-save').textContent  = 'Salva Modifiche';
+  document.getElementById('f-label').value  = p.label;
+  document.getElementById('f-ptitle').value = p.title;
+  rteSetContent(p.text);
+  openModal('modal-page');
+  setTimeout(() => document.getElementById('rte-editor').focus(), 100);
+}
+
+function savePage() {
+  const label = document.getElementById('f-label').value.trim();
+  const title = document.getElementById('f-ptitle').value.trim();
+  const text  = rteGetContent();
+  if (!title) { showToast('Inserisci almeno un titolo'); return; }
+
+  if (editingPageId) {
+    const idx = state.pages.findIndex(x => x.id === editingPageId);
+    if (idx !== -1) {
+      state.pages[idx] = { ...state.pages[idx], label: label || 'Voce', title, text };
+    }
+    showToast('Voce aggiornata ✓');
+  } else {
+    state.pages.push({ id: uid(), label: label || 'Voce', title, text });
+    currentPage = state.pages.length; // vai alla nuova pagina
+    showToast('Voce aggiunta ✓');
+  }
+
+  saveToStorage();
+  closeModal('modal-page');
+  renderPage();
+}
+
+function openDeleteModal(id) {
+  deletingPageId = id;
+  openModal('modal-confirm');
+}
+
+function confirmDelete() {
+  const idx = state.pages.findIndex(x => x.id === deletingPageId);
+  if (idx !== -1) state.pages.splice(idx, 1);
+  if (currentPage > state.pages.length) currentPage = state.pages.length;
+  saveToStorage();
+  closeModal('modal-confirm');
+  renderPage();
+  showToast('Voce eliminata');
+}
+
+/* ══════════════════════════════════════════════════
+   UTILITY
+══════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toRoman(n) {
+  const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
+  const syms = ['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I'];
+  let r = '';
+  vals.forEach((v,i) => { while(n>=v){ r+=syms[i]; n-=v; } });
+  return r;
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function buildStitches() {
+  const c = document.getElementById('stitches');
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('div');
+    s.className = 'stitch'; c.appendChild(s);
+  }
+}
+
+/* ── CHIUDI MODAL CON ESC / CLICK OVERLAY ── */
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.classList.remove('open');
+  });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    if (document.getElementById('diary').classList.contains('open')) closeDiary();
+  }
+  if (document.getElementById('diary').classList.contains('open') &&
+      !document.querySelector('.modal-overlay.open')) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changePage(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   changePage(-1);
+  }
+});
+
+document.getElementById('bookmark').addEventListener('click', e => {
+  e.stopPropagation();
+  currentPage = state.pages.length;
+  openDiary();
+});
+
+/* ══════════════════════════════════════════════════
+   AVVIO
+══════════════════════════════════════════════════ */
+loadFromStorage();
+buildStitches();
+renderCover();
+
+/* ══════════════════════════════════════════════════
+   RICH TEXT EDITOR ENGINE
+══════════════════════════════════════════════════ */
+
+function rteGetEditor() { return document.getElementById('rte-editor'); }
+
+/* Inizializza il contenuto dell'editor da HTML salvato */
+function rteSetContent(html) {
+  const ed = rteGetEditor();
+  // Normalizza: assicura che ogni contenuto sia dentro <p>
+  if (!html || html.trim() === '') {
+    ed.innerHTML = '<p><br></p>';
+  } else {
+    ed.innerHTML = html;
+  }
+  // Se non ci sono <p>, wrappa tutto
+  if (!ed.querySelector('p')) {
+    const p = document.createElement('p');
+    p.innerHTML = ed.innerHTML;
+    ed.innerHTML = '';
+    ed.appendChild(p);
+  }
+}
+
+/* Estrae HTML pulito dall'editor */
+function rteGetContent() {
+  const ed = rteGetEditor();
+  // Rimuovi <p> vuoti finali
+  const paras = ed.querySelectorAll('p');
+  paras.forEach(p => {
+    if (p.innerHTML === '<br>' || p.innerHTML === '' || p.innerHTML === '\u200B') {
+      // mantieni almeno uno
+    }
+  });
+  return ed.innerHTML.trim();
+}
+
+/* Applica classe al paragrafo corrente */
+function rteBlock(cls) {
+  const ed = rteGetEditor();
+  ed.focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+
+  // Trova il nodo <p> contenitore
+  let node = sel.getRangeAt(0).commonAncestorContainer;
+  while (node && node !== ed) {
+    if (node.nodeName === 'P') break;
+    node = node.parentNode;
+  }
+  if (!node || node === ed) {
+    // Crea un nuovo <p> se non siamo in uno
+    document.execCommand('formatBlock', false, 'p');
+    node = sel.getRangeAt(0).commonAncestorContainer;
+    while (node && node !== ed) {
+      if (node.nodeName === 'P') break;
+      node = node.parentNode;
+    }
+  }
+  if (node && node.nodeName === 'P') {
+    if (cls === 'p') {
+      node.className = '';
+    } else {
+      // toggle
+      node.className = node.className === cls ? '' : cls;
+    }
+  }
+  updateToolbarState();
+}
+
+/* Applica inline tag (em, strong) sulla selezione */
+function rteInline(tag) {
+  const ed = rteGetEditor();
+  ed.focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount || sel.isCollapsed) {
+    showToast('Seleziona prima il testo');
+    return;
+  }
+  const cmd = tag === 'em' ? 'italic' : 'bold';
+  document.execCommand(cmd, false, null);
+}
+
+/* Inserisce un nuovo paragrafo vuoto dopo quello corrente */
+function rteNewPara() {
+  const ed = rteGetEditor();
+  ed.focus();
+  const sel = window.getSelection();
+  if (!sel.rangeCount) return;
+
+  let node = sel.getRangeAt(0).commonAncestorContainer;
+  while (node && node !== ed) {
+    if (node.nodeName === 'P') break;
+    node = node.parentNode;
+  }
+
+  const newP = document.createElement('p');
+  newP.innerHTML = '<br>';
+  if (node && node.nodeName === 'P' && node.parentNode === ed) {
+    node.parentNode.insertBefore(newP, node.nextSibling);
+  } else {
+    ed.appendChild(newP);
+  }
+  // Sposta il cursore nel nuovo paragrafo
+  const range = document.createRange();
+  range.setStart(newP, 0);
+  range.collapse(true);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/* Aggiorna lo stato visivo dei pulsanti toolbar */
+function updateToolbarState() {
+  const ed = rteGetEditor();
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  let node = sel.getRangeAt(0).commonAncestorContainer;
+  while (node && node !== ed) {
+    if (node.nodeName === 'P') break;
+    node = node.parentNode;
+  }
+  const cls = (node && node.nodeName === 'P') ? node.className : '';
+
+  document.querySelectorAll('#rte-toolbar .rte-btn').forEach(btn => btn.classList.remove('active'));
+  if (cls === 'drop-cap')    document.querySelector('[onclick="rteBlock(\'drop-cap\')"]')?.classList.add('active');
+  if (cls === 'italic-note') document.querySelector('[onclick="rteBlock(\'italic-note\')"]')?.classList.add('active');
+  if (cls === '')             document.querySelector('[onclick="rteBlock(\'p\')"]')?.classList.add('active');
+}
+
+/* Assicura che l'editor contenga sempre <p> e non testo nudo */
+function rteEnsureStructure() {
+  const ed = rteGetEditor();
+  if (!ed) return;
+  // Se il figlio diretto è un testo nudo, wrappalo
+  ed.childNodes.forEach(n => {
+    if (n.nodeType === Node.TEXT_NODE && n.textContent.trim()) {
+      const p = document.createElement('p');
+      p.textContent = n.textContent;
+      ed.replaceChild(p, n);
+    }
+  });
+  // Se l'editor è vuoto, inserisci un <p> vuoto
+  if (ed.innerHTML.trim() === '' || ed.innerHTML === '<br>') {
+    ed.innerHTML = '<p><br></p>';
+  }
+}
+
+/* Event listeners dell'editor */
+document.addEventListener('DOMContentLoaded', () => {
+  const ed = document.getElementById('rte-editor');
+  if (!ed) return;
+
+  ed.addEventListener('keyup',   updateToolbarState);
+  ed.addEventListener('mouseup', updateToolbarState);
+  ed.addEventListener('blur',    rteEnsureStructure);
+
+  // Intercetta Invio: crea un nuovo <p> invece del <div> di default
+  ed.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      rteNewPara();
+    }
+  });
+
+  // Intercetta incolla: pulisce HTML esterno
+  ed.addEventListener('paste', e => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    if (!text) return;
+    // Divide per righe e crea paragrafi
+    const lines = text.split(/\n+/).filter(l => l.trim());
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    lines.reverse().forEach((line, i) => {
+      const p = document.createElement('p');
+      p.textContent = line;
+      range.insertNode(p);
+    });
+    rteEnsureStructure();
+  });
+});
+
+</script>
+</body>
+</html>

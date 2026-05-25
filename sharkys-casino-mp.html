@@ -496,6 +496,48 @@ let log           = [];
 let selectedWinner = null;
 
 // ────────────────────────────────────────────────────────────
+//  PERSISTENZA SESSIONE
+// ────────────────────────────────────────────────────────────
+const SS_KEY = 'sharkys_session';
+
+function saveSession() {
+  try {
+    const data = {
+      myId, myName, isBanker, roomCode,
+      myQtys, myStartQtys, setupQtys,
+      pot, potChips, currentPhase, log, players,
+      screen: getCurrentScreen(),
+      ts: Date.now()
+    };
+    sessionStorage.setItem(SS_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+
+function clearSession() {
+  sessionStorage.removeItem(SS_KEY);
+}
+
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function getCurrentScreen() {
+  const screens = ['lobby-screen','setup-screen','waiting-screen','game-screen','stats-screen'];
+  for (const s of screens) {
+    const el = document.getElementById(s);
+    if (el && el.style.display !== 'none') return s;
+  }
+  return 'lobby-screen';
+}
+
+// Salva automaticamente lo stato a ogni cambiamento significativo
+function autoSave() { saveSession(); }
+
+// ────────────────────────────────────────────────────────────
 //  TOAST
 // ────────────────────────────────────────────────────────────
 let _toastT = null;
@@ -512,6 +554,7 @@ function showToast(msg, type='') {
 function show(id) {
   ['lobby-screen','setup-screen','waiting-screen','game-screen','stats-screen']
     .forEach(s => document.getElementById(s).style.display = s===id?'block':'none');
+  autoSave();
 }
 
 // ────────────────────────────────────────────────────────────
@@ -567,6 +610,7 @@ async function createLobby() {
     renderSetupPlayers();
     show('setup-screen');
     setLobbyStatus('connected','');
+    autoSave();
   } catch(e) {
     setLobbyStatus('error','Errore creazione lobby. Riprova.');
     showToast('Errore di rete','error');
@@ -582,9 +626,9 @@ function showJoinArea() {
   a.style.display = a.style.display==='none'?'block':'none';
 }
 
-async function joinLobby() {
-  const name = document.getElementById('player-name-input').value.trim();
-  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+async function joinLobby(isRejoin=false) {
+  const name = isRejoin ? myName : document.getElementById('player-name-input').value.trim();
+  const code = isRejoin ? roomCode : document.getElementById('join-code-input').value.trim().toUpperCase();
   if (!name) { showToast('Inserisci il tuo nome prima di continuare','error'); return; }
   if (code.length < 4) { showToast('Inserisci un codice valido','error'); return; }
   myName = name; roomCode = code; isBanker = false;
@@ -597,13 +641,23 @@ async function joinLobby() {
     bankerConn = peer.connect(code, {reliable:true});
 
     bankerConn.on('open', ()=>{
-      // Presentarsi al banchiere
-      sendMsg(bankerConn, {type:'JOIN', id:myId, name:myName});
+      // Se è un rejoin, invia REJOIN con il vecchio peerId così il banchiere può aggiornare il record
+      if (isRejoin) {
+        sendMsg(bankerConn, {type:'REJOIN', id:myId, name:myName, oldId:myId});
+      } else {
+        sendMsg(bankerConn, {type:'JOIN', id:myId, name:myName});
+      }
+      myId = peer.id; // aggiorna myId con il nuovo peer ID
       show('waiting-screen');
       setLobbyStatus('connected','Connesso alla lobby');
+      autoSave();
     });
     bankerConn.on('data', onDataFromBanker);
-    bankerConn.on('close', ()=>showToast('Disconnesso dalla lobby','error'));
+    bankerConn.on('close', ()=>{
+      showToast('Disconnesso dalla lobby','error');
+      // Tenta riconnessione automatica dopo 2s
+      setTimeout(()=>{ if (roomCode) joinLobby(true); }, 2000);
+    });
     bankerConn.on('error', ()=>{
       setLobbyStatus('error','Lobby non trovata o codice errato.');
       showToast('Lobby non trovata','error');
@@ -627,20 +681,54 @@ function handleIncoming(conn) {
     broadcastPlayers();
     renderSetupPlayers();
     if (document.getElementById('game-screen').style.display!=='none') renderGamePlayers();
+    autoSave();
   });
 }
 
 function onDataFromPlayer(conn, data) {
+  // JOIN: nuovo giocatore
   if (data.type==='JOIN') {
     if (!players.find(p=>p.id===data.id))
       players.push({id:data.id, name:data.name, qtys:{}, startQtys:{}});
     renderSetupPlayers();
     broadcastPlayers();
+    autoSave();
     showToast(data.name+' è entrato al tavolo ♠','success');
+
+    // Se la partita è già in corso, manda lo stato completo al nuovo arrivato
+    const gameActive = document.getElementById('game-screen').style.display !== 'none';
+    if (gameActive) {
+      sendMsg(conn, {type:'GAME_REJOIN', setupQtys, players, pot, potChips, currentPhase});
+    }
+  }
+  // REJOIN: giocatore che si riconnette dopo refresh
+  if (data.type==='REJOIN') {
+    // Aggiorna il peerId del giocatore con il nuovo conn.peer
+    let pl = players.find(p=>p.name===data.name);
+    if (pl) {
+      const oldId = pl.id;
+      pl.id = conn.peer;
+      // Aggiorna anche in conns (già fatto dall'handleIncoming)
+    } else {
+      players.push({id:conn.peer, name:data.name, qtys:{}, startQtys:{}});
+    }
+    broadcastPlayers();
+    renderSetupPlayers();
+    if (document.getElementById('game-screen').style.display!=='none') renderGamePlayers();
+    autoSave();
+    showToast(data.name+' è rientrato al tavolo ♻','success');
+
+    // Manda lo stato attuale (setup o game)
+    const gameActive = document.getElementById('game-screen').style.display !== 'none';
+    if (gameActive) {
+      sendMsg(conn, {type:'GAME_REJOIN', setupQtys, players, pot, potChips, currentPhase});
+    } else {
+      sendMsg(conn, {type:'PLAYERS_UPDATE', players});
+    }
   }
   if (data.type==='CHIP_UPDATE') {
     const pl = players.find(p=>p.id===data.id);
-    if (pl) { pl.qtys = data.qtys; renderGamePlayers(); broadcastPlayers(); }
+    if (pl) { pl.qtys = data.qtys; renderGamePlayers(); broadcastPlayers(); autoSave(); }
   }
   if (data.type==='POT_ADD') {
     pot += data.amount;
@@ -664,13 +752,36 @@ function onDataFromBanker(data) {
     if (me) { myQtys={...me.qtys}; updateTotal(); }
     if (document.getElementById('waiting-screen').style.display!=='none') renderWaitingPlayers();
     if (document.getElementById('game-screen').style.display!=='none') renderGamePlayers();
+    autoSave();
   }
   if (data.type==='GAME_START') {
     setupQtys = data.setupQtys; players = data.players; pot=0; log=[];
     CHIPS.forEach(c=>{myQtys[c.value]=setupQtys[c.value]||0; myStartQtys[c.value]=myQtys[c.value];});
     launchGameUI();
+    autoSave();
   }
-  if (data.type==='POT_UPDATE') { pot=data.pot; renderPot(); }
+  // Ricevuto dopo un REJOIN: ripristina lo stato di gioco completo
+  if (data.type==='GAME_REJOIN') {
+    setupQtys = data.setupQtys; players = data.players; pot=data.pot; potChips=data.potChips||{};
+    // Trova le mie qtys dall'elenco giocatori (il banchiere ha lo stato aggiornato)
+    const me = players.find(p=>p.name===myName);
+    if (me) {
+      myId = me.id; // sincronizza ID se cambiato
+      myQtys = {...me.qtys};
+      myStartQtys = {...me.startQtys};
+    } else {
+      CHIPS.forEach(c=>{myQtys[c.value]=setupQtys[c.value]||0; myStartQtys[c.value]=myQtys[c.value];});
+    }
+    if (data.currentPhase) currentPhase = data.currentPhase;
+    launchGameUI();
+    // Ripristina fase attiva
+    document.querySelectorAll('.phase-btn').forEach(b=>{
+      b.classList.toggle('active', b.textContent.trim()===currentPhase);
+    });
+    autoSave();
+    showToast('Sessione ripristinata ✓','success');
+  }
+  if (data.type==='POT_UPDATE') { pot=data.pot; renderPot(); autoSave(); }
   if (data.type==='WIN_ASSIGNED') {
     players = data.players;
     if (data.winnerId === myId && data.wonChips) {
@@ -686,6 +797,7 @@ function onDataFromBanker(data) {
     const w = players.find(p=>p.id===data.winnerId);
     showToast((w?w.name:'Qualcuno')+' vince il piatto! ('+data.amount+')','success');
     addLogEntry('Piatto','win',data.amount, data.winnerId===myId?'Tu':(w?w.name:''));
+    autoSave();
   }
   if (data.type==='LOG_ENTRY') {
     const e = data.entry;
@@ -694,6 +806,7 @@ function onDataFromBanker(data) {
     addLogEntry(e.phase, e.type, e.amount, e.who);
   }
   if (data.type==='SESSION_END') {
+    clearSession();
     computeStats(); show('stats-screen');
     window.scrollTo({top:0,behavior:'smooth'});
   }
@@ -704,8 +817,8 @@ function onDataFromBanker(data) {
 // ────────────────────────────────────────────────────────────
 function sendMsg(conn, data) { try { conn.send(data); } catch(e){} }
 function broadcast(data) { Object.values(conns).forEach(c=>sendMsg(c,data)); }
-function broadcastPlayers() { broadcast({type:'PLAYERS_UPDATE', players}); }
-function broadcastPot() { broadcast({type:'POT_UPDATE', pot}); renderPot(); }
+function broadcastPlayers() { broadcast({type:'PLAYERS_UPDATE', players}); autoSave(); }
+function broadcastPot() { broadcast({type:'POT_UPDATE', pot}); renderPot(); autoSave(); }
 
 // ────────────────────────────────────────────────────────────
 //  SETUP (banchiere)
@@ -767,6 +880,7 @@ function startGame() {
   pot=0; potChips={}; pendingChips={}; log=[];
   broadcast({type:'GAME_START', setupQtys, players});
   launchGameUI();
+  autoSave();
 }
 
 // ────────────────────────────────────────────────────────────
@@ -990,6 +1104,7 @@ function addLogEntry(phase, type, amount, who) {
 // ────────────────────────────────────────────────────────────
 function endSession() {
   if (!log.length && !confirm('Nessuna azione registrata. Terminare comunque?')) return;
+  clearSession();
   computeStats(); show('stats-screen');
   window.scrollTo({top:0,behavior:'smooth'});
   if (isBanker) broadcast({type:'SESSION_END'});
@@ -1047,6 +1162,7 @@ function newSession() {
   myQtys={}; myStartQtys={}; log=[]; pot=0; potChips={}; pendingChips={}; currentPhase='Pre-Flop';
   players=[]; conns={}; bankerConn=null; isBanker=false;
   if (peer) { try{peer.destroy();}catch(e){} peer=null; }
+  clearSession();
   show('lobby-screen');
   setLobbyStatus('connected','Rete disponibile · Scegli come procedere');
   window.scrollTo({top:0,behavior:'smooth'});
@@ -1066,9 +1182,66 @@ function copyRoomCode() {
 }
 
 // ────────────────────────────────────────────────────────────
-//  INIT
+//  INIT — ripristino sessione al caricamento
 // ────────────────────────────────────────────────────────────
-setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+(async function init() {
+  const saved = loadSession();
+  if (saved && saved.roomCode) {
+    // Ripristina variabili di stato
+    myName      = saved.myName      || '';
+    isBanker    = saved.isBanker    || false;
+    roomCode    = saved.roomCode    || '';
+    myQtys      = saved.myQtys      || {};
+    myStartQtys = saved.myStartQtys || {};
+    setupQtys   = saved.setupQtys   || {};
+    pot         = saved.pot         || 0;
+    potChips    = saved.potChips    || {};
+    currentPhase= saved.currentPhase|| 'Pre-Flop';
+    log         = saved.log         || [];
+    players     = saved.players     || [];
+
+    if (isBanker) {
+      // Banchiere: rilancia il peer con lo stesso room code
+      setLobbyStatus('connecting','Ripristino lobby in corso…');
+      try {
+        peer = await makePeer(roomCode);
+        peer.on('connection', handleIncoming);
+        peer.on('disconnected', ()=>peer.reconnect());
+
+        document.getElementById('room-code-value').textContent = roomCode;
+        buildSetup();
+
+        const screen = saved.screen || 'setup-screen';
+        if (screen === 'game-screen') {
+          launchGameUI();
+          document.querySelectorAll('.phase-btn').forEach(b=>{
+            b.classList.toggle('active', b.textContent.trim()===currentPhase);
+          });
+        } else {
+          show('setup-screen');
+          renderSetupPlayers();
+        }
+        setLobbyStatus('connected','Lobby ripristinata · In attesa dei giocatori');
+        showToast('Sessione ripristinata ✓','success');
+      } catch(e) {
+        setLobbyStatus('error','Errore ripristino lobby.');
+        clearSession();
+        setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+      }
+    } else {
+      // Giocatore: riconnettiti automaticamente
+      const screen = saved.screen || 'waiting-screen';
+      if (screen === 'game-screen' || screen === 'waiting-screen') {
+        setLobbyStatus('connecting','Riconnessione in corso…');
+        await joinLobby(true);
+      } else {
+        setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+      }
+    }
+  } else {
+    setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+  }
+})();
 </script>
 </body>
 </html>

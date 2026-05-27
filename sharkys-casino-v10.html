@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sharky's Casino – Texas Hold'em</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root {
+  --felt-dark:#0d3b1e;--gold:#c9a227;--gold-light:#f0cc5a;--cream:#f5edd6;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:'Cinzel',serif;background-color:var(--felt-dark);
+  background-image:radial-gradient(ellipse at 50% 0%,#1e6e35 0%,#0d3b1e 60%),
+    repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+  background-attachment:fixed;background-size:cover;min-height:100vh;overflow-x:hidden;
+}
+.felt-bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 50% 0%,#1e6e35 0%,#0d3b1e 60%),repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(0,0,0,.04) 2px,rgba(0,0,0,.04) 4px);}
+@media(max-width:600px){.felt-bg{display:none;}}
+.felt-bg::after{content:'';position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Ccircle cx='1' cy='1' r='0.5' fill='rgba(255,255,255,0.03)'/%3E%3C/svg%3E");background-size:4px 4px;}
+.table-rail{position:fixed;inset:10px;border-radius:50%;border:8px solid;border-color:#6b4c1e #c9a227 #6b4c1e #c9a227;box-shadow:inset 0 0 60px rgba(0,0,0,.4),0 0 0 4px #4a2e0a,0 0 40px rgba(201,162,39,.15);pointer-events:none;z-index:0;}
+@media(max-width:600px){.table-rail{display:none;}}
+.page{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:30px 20px 100px;}
+
+/* HEADER */
+.casino-header{text-align:center;margin-bottom:32px;padding-top:20px;}
+.casino-name{font-family:'Cinzel Decorative',cursive;font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--gold-light);text-shadow:0 0 20px rgba(201,162,39,.8),0 2px 4px rgba(0,0,0,.8),0 0 60px rgba(201,162,39,.3);letter-spacing:.08em;line-height:1;}
+.casino-name span{color:#fff;text-shadow:0 2px 4px rgba(0,0,0,.9);}
+.game-title{font-family:'Cinzel',serif;font-size:clamp(.85rem,2.5vw,1.1rem);font-weight:600;color:var(--gold);letter-spacing:.35em;text-transform:uppercase;margin-top:6px;opacity:.9;}
+.header-divider{display:flex;align-items:center;gap:16px;margin:18px auto;max-width:400px;}
+.header-divider::before,.header-divider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.header-divider-icon{color:var(--gold);font-size:1.2rem;}
+.suits{display:flex;gap:18px;justify-content:center;color:rgba(201,162,39,.35);font-size:1.4rem;margin-top:6px;}
+.suits span:nth-child(1),.suits span:nth-child(4){color:rgba(220,50,50,.35);}
+
+/* PANELS */
+.panel{background:rgba(10,40,20,.82);border:1px solid rgba(201,162,39,.35);border-radius:12px;padding:24px 28px;margin-bottom:24px;box-shadow:0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(201,162,39,.1);}
+.panel-title{font-family:'Cinzel',serif;font-size:.8rem;font-weight:700;color:var(--gold);letter-spacing:.22em;text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.panel-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(201,162,39,.5),transparent);}
+
+/* NET BAR */
+.net-bar{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 16px;margin-bottom:20px;font-size:.72rem;color:rgba(255,255,255,.55);letter-spacing:.08em;}
+.net-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#888;transition:background .4s;}
+.net-dot.connected{background:#4ecf6b;box-shadow:0 0 6px #4ecf6b;}
+.net-dot.connecting{background:var(--gold);animation:pulse 1s infinite;}
+.net-dot.error{background:#e85555;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* LOBBY */
+.lobby-subtitle{font-size:.78rem;color:rgba(255,255,255,.45);font-family:'Cinzel',serif;letter-spacing:.08em;margin-bottom:28px;text-align:center;}
+.lobby-choices{display:flex;gap:16px;flex-wrap:wrap;}
+.lobby-card{flex:1;min-width:200px;background:rgba(255,255,255,.04);border:1px solid rgba(201,162,39,.25);border-radius:12px;padding:24px 20px;text-align:center;cursor:pointer;transition:all .2s;}
+.lobby-card:hover{background:rgba(201,162,39,.1);border-color:rgba(201,162,39,.55);transform:translateY(-2px);}
+.lobby-card-icon{font-size:2.2rem;margin-bottom:12px;}
+.lobby-card-title{font-size:1rem;font-weight:700;color:var(--gold-light);margin-bottom:8px;letter-spacing:.1em;}
+.lobby-card-desc{font-size:.7rem;color:rgba(255,255,255,.4);font-family:'Playfair Display',serif;font-style:italic;line-height:1.5;}
+.lobby-join-area{margin-top:28px;}
+.lobby-join-label{font-size:.7rem;color:rgba(255,255,255,.45);letter-spacing:.15em;text-transform:uppercase;margin-bottom:10px;}
+.lobby-join-row{display:flex;gap:10px;flex-wrap:wrap;}
+.lobby-join-row .btn-gold{width:100%;}
+.lobby-code-input{flex:1;background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.4);border-radius:8px;color:var(--cream);font-family:'Cinzel',serif;font-size:1.4rem;font-weight:700;text-align:center;padding:10px;outline:none;letter-spacing:.3em;text-transform:uppercase;transition:border-color .2s;}
+.lobby-code-input:focus{border-color:var(--gold);}
+.lobby-code-input::placeholder{font-size:1rem;letter-spacing:.1em;color:rgba(255,255,255,.2);}
+.btn-gold{background:linear-gradient(135deg,#b8891e,#e8b830,#b8891e);border:none;border-radius:8px;color:#1a0f00;font-family:'Cinzel',serif;font-size:.85rem;font-weight:700;letter-spacing:.12em;padding:12px 24px;cursor:pointer;box-shadow:0 4px 16px rgba(201,162,39,.35);transition:all .2s;white-space:nowrap;}
+.btn-gold:hover{filter:brightness(1.1);transform:translateY(-1px);}
+
+/* NAME INPUT */
+.name-input{width:100%;background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.4);border-radius:8px;color:var(--cream);font-family:'Cinzel',serif;font-size:1rem;font-weight:700;padding:12px 16px;outline:none;transition:border-color .2s;letter-spacing:.05em;margin-bottom:20px;}
+.name-input:focus{border-color:var(--gold);}
+.name-input::placeholder{color:rgba(255,255,255,.25);font-weight:400;}
+
+/* ROOM CODE */
+.room-code-display{background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.3);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.room-code-label{font-size:.65rem;color:rgba(255,255,255,.4);letter-spacing:.2em;text-transform:uppercase;margin-bottom:4px;}
+.room-code-value{font-family:'Cinzel Decorative',cursive;font-size:1.8rem;color:var(--gold-light);letter-spacing:.25em;text-shadow:0 0 16px rgba(201,162,39,.5);}
+.btn-copy{background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.35);border-radius:7px;color:var(--gold-light);font-family:'Cinzel',serif;font-size:.65rem;font-weight:700;letter-spacing:.1em;padding:8px 14px;cursor:pointer;transition:all .2s;white-space:nowrap;text-transform:uppercase;}
+.btn-copy:hover{background:rgba(201,162,39,.28);}
+.btn-copy.copied{background:rgba(78,207,107,.2);border-color:rgba(78,207,107,.4);color:#4ecf6b;}
+
+/* PLAYERS LIST */
+.players-list{display:flex;flex-direction:column;gap:8px;}
+.player-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:11px 14px;transition:border-color .2s;}
+.player-row.is-me{border-color:rgba(201,162,39,.3);}
+.player-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);}
+.player-name{flex:1;font-size:.88rem;color:var(--cream);font-weight:600;}
+.player-role{font-size:.6rem;color:rgba(255,255,255,.35);letter-spacing:.15em;text-transform:uppercase;}
+.player-role.banker{color:var(--gold);}
+.player-stack{font-size:.85rem;color:var(--gold-light);font-weight:700;min-width:60px;text-align:right;}
+
+/* POT */
+.pot-bar{display:flex;align-items:center;justify-content:space-between;background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.3);border-radius:10px;padding:14px 22px;margin-bottom:20px;}
+.pot-label{font-size:.7rem;color:rgba(255,255,255,.45);letter-spacing:.18em;text-transform:uppercase;margin-bottom:4px;}
+.pot-value{font-family:'Cinzel Decorative',cursive;font-size:2rem;color:#f0a45a;text-shadow:0 0 16px rgba(240,164,90,.5);}
+.pot-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-pot-action{background:rgba(192,57,43,.2);border:1px solid rgba(192,57,43,.4);border-radius:7px;color:#f07070;font-family:'Cinzel',serif;font-size:.65rem;font-weight:700;letter-spacing:.08em;padding:7px 14px;cursor:pointer;transition:all .15s;text-transform:uppercase;}
+.btn-pot-action:hover{background:rgba(192,57,43,.35);color:#ffa0a0;}
+.btn-pot-action.win-btn{background:rgba(30,110,50,.2);border-color:rgba(46,158,71,.4);color:#6be88a;}
+.btn-pot-action.win-btn:hover{background:rgba(30,110,50,.35);}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:#0d3b1e;border:1px solid rgba(201,162,39,.4);border-radius:14px;padding:28px 24px;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,.7);}
+.modal-title{font-size:.85rem;font-weight:700;color:var(--gold);letter-spacing:.2em;text-transform:uppercase;margin-bottom:20px;}
+.modal-players{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.modal-player-btn{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:9px;padding:12px 16px;cursor:pointer;transition:all .2s;text-align:left;width:100%;}
+.modal-player-btn:hover{background:rgba(78,207,107,.12);border-color:rgba(78,207,107,.35);}
+.modal-player-btn.selected{background:rgba(78,207,107,.18);border-color:#4ecf6b;}
+.modal-player-name{flex:1;color:var(--cream);font-size:.88rem;font-weight:600;}
+.modal-player-stack{color:var(--gold-light);font-size:.8rem;}
+.modal-actions{display:flex;gap:10px;}
+.btn-cancel{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.5);font-family:'Cinzel',serif;font-size:.75rem;font-weight:700;letter-spacing:.1em;padding:11px;cursor:pointer;text-transform:uppercase;transition:all .2s;}
+.btn-cancel:hover{background:rgba(255,255,255,.1);}
+.btn-confirm-win{flex:2;background:linear-gradient(135deg,#1a6e2e,#2e9e47);border:none;border-radius:8px;color:#fff;font-family:'Cinzel',serif;font-size:.75rem;font-weight:700;letter-spacing:.1em;padding:11px;cursor:pointer;text-transform:uppercase;box-shadow:0 3px 12px rgba(46,158,71,.35);transition:all .2s;}
+.btn-confirm-win:hover{filter:brightness(1.1);}
+
+/* BETS OPEN POPUP */
+.bets-open-overlay{display:none;position:fixed;inset:0;z-index:250;align-items:center;justify-content:center;padding:20px;pointer-events:none;}
+.bets-open-overlay.open{display:flex;}
+.bets-open-modal{background:linear-gradient(135deg,#0d3b1e,#1e6e35);border:2px solid var(--gold);border-radius:16px;padding:28px 32px;max-width:340px;width:100%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.7),0 0 40px rgba(201,162,39,.2);pointer-events:all;animation:betsOpenAnim .35s cubic-bezier(.34,1.56,.64,1);}
+@keyframes betsOpenAnim{from{transform:scale(.8) translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.bets-open-icon{font-size:2.8rem;margin-bottom:10px;line-height:1;}
+.bets-open-title{font-family:'Cinzel Decorative',cursive;font-size:1.3rem;font-weight:900;color:var(--gold-light);text-shadow:0 0 16px rgba(201,162,39,.5);margin-bottom:8px;letter-spacing:.06em;}
+.bets-open-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:20px;line-height:1.5;}
+.bets-open-close{background:linear-gradient(135deg,#b8891e,#e8b830,#b8891e);border:none;border-radius:8px;color:#1a0f00;font-family:'Cinzel',serif;font-size:.8rem;font-weight:700;letter-spacing:.1em;padding:10px 28px;cursor:pointer;box-shadow:0 3px 12px rgba(201,162,39,.35);transition:all .2s;text-transform:uppercase;}
+.bets-open-close:hover{filter:brightness(1.1);}
+
+/* BLIND BADGE */
+.blind-badge{display:inline-block;font-size:.55rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:6px;vertical-align:middle;}
+.blind-badge.sb{background:rgba(201,162,39,.25);color:var(--gold-light);}
+.blind-badge.bb{background:rgba(36,113,163,.25);color:#7ec8e3;}
+.min-bet-notice{background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:8px;padding:10px 14px;font-size:.72rem;color:var(--gold-light);letter-spacing:.06em;margin-bottom:12px;display:none;}
+.min-bet-notice.visible{display:block;}
+.blind-modal-info{font-size:.75rem;color:rgba(255,255,255,.45);font-family:'Playfair Display',serif;font-style:italic;line-height:1.6;margin-bottom:18px;}
+
+/* RESULT POPUP */
+.result-overlay{display:none;position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.82);align-items:center;justify-content:center;padding:20px;}
+.result-overlay.open{display:flex;}
+.result-modal{background:#0d3b1e;border-radius:18px;padding:40px 32px 32px;max-width:340px;width:100%;text-align:center;box-shadow:0 12px 60px rgba(0,0,0,.8);}
+.result-modal.win{border:2px solid var(--gold);box-shadow:0 12px 60px rgba(0,0,0,.8),0 0 40px rgba(201,162,39,.25);}
+.result-modal.lose{border:2px solid rgba(192,57,43,.5);box-shadow:0 12px 60px rgba(0,0,0,.8),0 0 30px rgba(192,57,43,.15);}
+.result-modal.draw{border:2px solid rgba(255,255,255,.2);}
+.result-icon{font-size:3.8rem;line-height:1;margin-bottom:16px;}
+.result-title{font-family:'Cinzel Decorative',cursive;font-size:1.6rem;font-weight:900;margin-bottom:8px;letter-spacing:.06em;}
+.result-modal.win .result-title{color:var(--gold-light);text-shadow:0 0 20px rgba(201,162,39,.6);}
+.result-modal.lose .result-title{color:#f07070;}
+.result-modal.draw .result-title{color:rgba(255,255,255,.7);}
+.result-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:.85rem;color:rgba(255,255,255,.45);margin-bottom:28px;}
+.result-close-btn{background:linear-gradient(135deg,#b8891e,#e8b830,#b8891e);border:none;border-radius:10px;color:#1a0f00;font-family:'Cinzel',serif;font-size:.85rem;font-weight:700;letter-spacing:.12em;padding:13px 36px;cursor:pointer;box-shadow:0 4px 16px rgba(201,162,39,.35);transition:all .2s;text-transform:uppercase;}
+.result-close-btn:hover{filter:brightness(1.1);transform:translateY(-1px);}
+
+/* SETUP */
+.setup-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;}
+.chip-setup-row{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;transition:border-color .2s;}
+.chip-setup-row:hover{border-color:rgba(201,162,39,.3);}
+.chip-visual{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;font-size:.7rem;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.15);position:relative;border:3px dashed rgba(255,255,255,.25);text-shadow:0 1px 2px rgba(0,0,0,.8);}
+.chip-visual::before{content:'';position:absolute;inset:4px;border-radius:50%;background:rgba(255,255,255,.08);}
+.chip-label{flex:1;}
+.chip-label-value{font-size:1.05rem;font-weight:700;color:var(--cream);}
+.chip-label-name{font-size:.7rem;color:rgba(255,255,255,.45);font-family:'Playfair Display',serif;font-style:italic;}
+.qty-input{width:68px;background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.4);border-radius:6px;color:var(--cream);font-family:'Cinzel',serif;font-size:1rem;font-weight:700;text-align:center;padding:6px 4px;outline:none;transition:border-color .2s;}
+.qty-input:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,162,39,.2);}
+.qty-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.btn-start{display:block;margin:32px auto 0;background:linear-gradient(135deg,#b8891e,#e8b830,#b8891e);border:none;border-radius:50px;color:#1a0f00;font-family:'Cinzel Decorative',cursive;font-size:1rem;font-weight:700;letter-spacing:.15em;padding:16px 52px;cursor:pointer;box-shadow:0 4px 20px rgba(201,162,39,.4);transition:all .2s;}
+.btn-start:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(201,162,39,.55);}
+
+/* TOTAL BAR */
+.total-bar{display:flex;align-items:center;justify-content:space-between;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.25);border-radius:10px;padding:14px 22px;margin-bottom:24px;}
+.total-label{font-size:.75rem;color:rgba(255,255,255,.5);letter-spacing:.15em;text-transform:uppercase;}
+.total-value{font-family:'Cinzel Decorative',cursive;font-size:1.6rem;color:var(--gold-light);text-shadow:0 0 12px rgba(201,162,39,.5);}
+
+/* CHIPS GRID */
+.chips-grid{display:flex;flex-direction:column;gap:10px;}
+.chip-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 16px;transition:background .2s;}
+.chip-row:hover{background:rgba(255,255,255,.06);}
+.chip-visual-sm{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-weight:700;font-size:.65rem;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.5);border:2px dashed rgba(255,255,255,.25);text-shadow:0 1px 2px rgba(0,0,0,.8);}
+.chip-controls{display:flex;align-items:center;gap:6px;margin-left:auto;}
+.ctrl-btn{width:34px;height:34px;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.35);border-radius:50%;color:var(--gold-light);font-size:1.2rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-family:monospace;}
+.ctrl-btn:hover{background:rgba(201,162,39,.3);transform:scale(1.1);}
+.ctrl-btn:active{transform:scale(.95);}
+.ctrl-btn-pot{background:rgba(180,90,20,.22);border:1px solid rgba(220,130,40,.45);border-radius:7px;color:#f0a45a;font-family:'Cinzel',serif;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:0 8px;height:34px;cursor:pointer;white-space:nowrap;transition:all .15s;}
+.ctrl-btn-pot:hover{background:rgba(220,110,20,.35);border-color:rgba(240,150,60,.7);color:#ffc07a;transform:scale(1.05);}
+.chip-qty-display{width:60px;background:rgba(0,0,0,.45);border:1px solid rgba(201,162,39,.35);border-radius:6px;color:var(--cream);font-family:'Cinzel',serif;font-size:1rem;font-weight:700;text-align:center;padding:5px 4px;outline:none;}
+.chip-qty-display:focus{border-color:var(--gold);}
+.chip-qty-display::-webkit-inner-spin-button{-webkit-appearance:none;}
+
+/* PHASE */
+.phase-bar{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;}
+.phase-btn{flex:1;min-width:90px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:rgba(255,255,255,.55);font-family:'Cinzel',serif;font-size:.8rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:10px 8px;cursor:pointer;transition:all .2s;}
+.phase-btn:hover{background:rgba(201,162,39,.12);border-color:rgba(201,162,39,.3);color:var(--gold-light);}
+.phase-btn.active{background:rgba(201,162,39,.18);border-color:var(--gold);color:var(--gold-light);box-shadow:0 0 12px rgba(201,162,39,.2);}
+.phase-btn.showdown-btn{flex-basis:100%;flex-grow:1;min-width:100%;}
+
+/* BET PANEL */
+.bet-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+.action-buttons-row{display:flex;gap:8px;align-items:flex-end;}
+.bet-record-area{flex:1;min-width:220px;}
+.bet-record-label{font-size:.7rem;color:rgba(255,255,255,.45);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;}
+.bet-input-row{display:flex;gap:8px;}
+.bet-value-input{flex:1;background:rgba(0,0,0,.45);border:1px solid rgba(201,162,39,.35);border-radius:8px;color:var(--cream);font-family:'Cinzel',serif;font-size:1.1rem;font-weight:700;padding:10px 14px;outline:none;transition:border-color .2s;}
+.bet-value-input:focus{border-color:var(--gold);}
+.bet-value-input::-webkit-inner-spin-button{-webkit-appearance:none;}
+.btn-win{background:linear-gradient(135deg,#1a6e2e,#2e9e47);}
+.btn-loss{background:linear-gradient(135deg,#8e1a1a,#c0392b);}
+.btn-bet{background:linear-gradient(135deg,#1a4a8e,#2471a3);}
+.btn-cancel-bet{background:linear-gradient(135deg,#5a3a0a,#8e5e1e);}
+.btn-allin{background:linear-gradient(135deg,#6b0f0f,#c0392b,#6b0f0f);border:1px solid rgba(255,80,80,.5) !important;color:#fff;text-shadow:0 0 8px rgba(255,100,100,.6);box-shadow:0 3px 14px rgba(192,57,43,.5) !important;animation:allinPulse 2s infinite;}
+@keyframes allinPulse{0%,100%{box-shadow:0 3px 14px rgba(192,57,43,.5)}50%{box-shadow:0 3px 20px rgba(255,80,80,.8),0 0 30px rgba(255,60,60,.25)}}
+.btn-allin:hover{filter:brightness(1.2);transform:translateY(-2px) !important;}
+.allin-badge{display:inline-block;font-size:.48rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;background:rgba(192,57,43,.4);color:#ff9090;border:1px solid rgba(255,80,80,.3);}
+/* Side Pot Display */
+.sidepot-bar{background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.2);border-radius:10px;padding:10px 16px;margin-top:10px;display:none;}
+.sidepot-bar.visible{display:block;}
+.sidepot-bar-title{font-size:.6rem;color:rgba(201,162,39,.6);letter-spacing:.2em;text-transform:uppercase;margin-bottom:8px;}
+.sidepot-list{display:flex;flex-direction:column;gap:6px;}
+.sidepot-row{display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.03);border-radius:7px;padding:7px 12px;}
+.sidepot-label{font-size:.72rem;color:rgba(255,255,255,.55);letter-spacing:.06em;}
+.sidepot-label span{color:var(--gold-light);font-weight:700;}
+.sidepot-value{font-family:'Cinzel Decorative',cursive;font-size:.95rem;color:var(--cream);}
+.sidepot-eligible{font-size:.58rem;color:rgba(255,255,255,.35);margin-top:2px;letter-spacing:.04em;}
+.action-btn{border:none;border-radius:8px;color:#fff;font-family:'Cinzel',serif;font-size:.75rem;font-weight:700;letter-spacing:.1em;padding:10px 18px;cursor:pointer;transition:all .2s;box-shadow:0 3px 10px rgba(0,0,0,.4);text-transform:uppercase;align-self:flex-end;}
+.action-btn:hover{filter:brightness(1.15);transform:translateY(-1px);}
+.action-btn:active{transform:translateY(0);filter:brightness(.95);}
+
+/* LOG */
+.hand-log{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:4px;}
+.hand-log::-webkit-scrollbar{width:4px;}
+.hand-log::-webkit-scrollbar-thumb{background:rgba(201,162,39,.3);border-radius:2px;}
+.log-entry{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:7px;padding:8px 12px;font-size:.78rem;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.log-phase-badge{font-size:.6rem;font-weight:700;letter-spacing:.1em;padding:2px 7px;border-radius:4px;text-transform:uppercase;white-space:nowrap;}
+.badge-pre{background:rgba(100,100,100,.3);color:#aaa;}
+.badge-flop{background:rgba(36,113,163,.3);color:#7ec8e3;}
+.badge-turn{background:rgba(155,89,182,.3);color:#d7aefb;}
+.badge-river,.badge-pot{background:rgba(201,162,39,.3);color:var(--gold-light);}
+.log-type{font-weight:700;min-width:50px;}
+.log-win{color:#4ecf6b;}
+.log-loss{color:#e85555;}
+.log-bet{color:#6ab0e8;}
+.log-who{color:rgba(255,255,255,.35);font-size:.65rem;}
+.log-amount{color:var(--cream);font-weight:600;margin-left:auto;}
+
+/* END SESSION */
+.end-session-wrapper{display:flex;justify-content:center;margin-top:40px;padding-bottom:40px;}
+.btn-end-session{background:linear-gradient(135deg,#8e1212,#c0392b,#8e1212);border:2px solid rgba(255,100,100,.3);border-radius:50px;color:#fff;font-family:'Cinzel Decorative',cursive;font-size:.95rem;font-weight:700;letter-spacing:.15em;padding:16px 52px;cursor:pointer;box-shadow:0 4px 24px rgba(192,57,43,.5);transition:all .2s;text-transform:uppercase;}
+.btn-end-session:hover{transform:translateY(-2px);filter:brightness(1.1);}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{background:rgba(255,255,255,.04);border:1px solid rgba(201,162,39,.2);border-radius:10px;padding:18px 16px;text-align:center;}
+.stat-card-label{font-size:.65rem;color:rgba(255,255,255,.45);letter-spacing:.18em;text-transform:uppercase;margin-bottom:10px;}
+.stat-card-value{font-family:'Cinzel Decorative',cursive;font-size:1.7rem;color:var(--gold-light);text-shadow:0 0 10px rgba(201,162,39,.4);}
+.stat-card-value.green{color:#4ecf6b;}
+.stat-card-value.red{color:#e85555;}
+.phase-breakdown{display:flex;gap:12px;flex-wrap:wrap;}
+.phase-stat{flex:1;min-width:130px;background:rgba(255,255,255,.04);border-radius:10px;padding:14px;text-align:center;}
+.phase-stat-label{font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:8px;}
+.phase-stat-bets{font-size:.85rem;color:#6ab0e8;margin-bottom:4px;}
+.phase-stat-wins{font-size:.85rem;color:#4ecf6b;}
+.chips-summary{display:flex;flex-direction:column;gap:8px;}
+.chip-summary-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.04);border-radius:8px;}
+.chip-summary-change{margin-left:auto;font-weight:700;font-size:.9rem;}
+.change-pos{color:#4ecf6b;}
+.change-neg{color:#e85555;}
+.change-neu{color:rgba(255,255,255,.4);}
+.btn-new-session{display:block;margin:32px auto 0;background:linear-gradient(135deg,#b8891e,#e8b830,#b8891e);border:none;border-radius:50px;color:#1a0f00;font-family:'Cinzel Decorative',cursive;font-size:.9rem;font-weight:700;letter-spacing:.15em;padding:15px 44px;cursor:pointer;box-shadow:0 4px 20px rgba(201,162,39,.4);transition:all .2s;}
+.btn-new-session:hover{transform:translateY(-2px);filter:brightness(1.05);}
+
+/* FOLD / CALL / RAISE BUTTONS */
+.bet-quick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.btn-fold{background:linear-gradient(135deg,#6b0f0f,#a01a1a);border:1px solid rgba(255,80,80,.35);border-radius:8px;color:#ffaaaa;font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;padding:10px 18px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.4);transition:all .2s;text-transform:uppercase;flex:1;}
+.btn-fold:hover{filter:brightness(1.2);transform:translateY(-1px);}
+.btn-call{background:linear-gradient(135deg,#1a4a8e,#2471a3);border:1px solid rgba(100,180,255,.3);border-radius:8px;color:#a8d8ff;font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;padding:10px 18px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.4);transition:all .2s;text-transform:uppercase;flex:1;}
+.btn-call:hover{filter:brightness(1.15);transform:translateY(-1px);}
+.btn-raise-custom{background:linear-gradient(135deg,#5a3a0a,#8e5e1e);border:1px solid rgba(240,164,90,.3);border-radius:8px;color:#f0c87a;font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;letter-spacing:.1em;padding:10px 18px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.4);transition:all .2s;text-transform:uppercase;flex:1;}
+.btn-raise-custom:hover{filter:brightness(1.15);transform:translateY(-1px);}
+.bet-section-divider{font-size:.62rem;color:rgba(255,255,255,.3);letter-spacing:.2em;text-transform:uppercase;text-align:center;margin:8px 0;position:relative;}
+.bet-section-divider::before,.bet-section-divider::after{content:'';position:absolute;top:50%;width:30%;height:1px;background:rgba(255,255,255,.1);}
+.bet-section-divider::before{left:0;}
+.bet-section-divider::after{right:0;}
+/* FOLDED player row */
+.player-row.folded{opacity:.4;border-color:rgba(255,80,80,.2);}
+.player-row.folded .player-avatar::after{content:'✕';position:absolute;bottom:-2px;right:-2px;font-size:.55rem;background:#c0392b;color:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.fold-badge{display:inline-block;font-size:.5rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;background:rgba(192,57,43,.3);color:#f07070;}
+.player-row.is-me.folded{border-color:rgba(192,57,43,.4);background:rgba(80,10,10,.3);}
+.folded-notice{background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.35);border-radius:8px;padding:10px 14px;font-size:.72rem;color:#f07070;letter-spacing:.06em;margin-bottom:12px;display:none;text-align:center;}
+.folded-notice.visible{display:block;}
+
+/* PHASE CONFIRMED */
+.phase-btn .phase-confirmed-count{font-size:.55rem;display:block;margin-top:3px;color:rgba(255,255,255,.4);letter-spacing:.05em;font-weight:400;}
+.phase-btn.all-confirmed{border-color:#4ecf6b;background:rgba(78,207,107,.18);color:#4ecf6b;animation:phaseGlow .6s ease;}
+@keyframes phaseGlow{0%{box-shadow:0 0 0 rgba(78,207,107,0)}50%{box-shadow:0 0 18px rgba(78,207,107,.6)}100%{box-shadow:0 0 8px rgba(78,207,107,.2)}}
+.phase-btn.showdown-btn.active{background:rgba(180,30,30,.28);border-color:#e85555;color:#ff7070;box-shadow:0 0 16px rgba(232,85,85,.35);animation:showdownGlow .8s ease;}
+@keyframes showdownGlow{0%{box-shadow:0 0 0 rgba(232,85,85,0)}50%{box-shadow:0 0 22px rgba(232,85,85,.7)}100%{box-shadow:0 0 10px rgba(232,85,85,.3)}}
+.ctrl-btn-pot.punta-disabled{opacity:.3;pointer-events:none;cursor:not-allowed;filter:grayscale(1);}
+.player-row.bet-confirmed .player-avatar::after{content:'✓';position:absolute;bottom:-2px;right:-2px;font-size:.55rem;background:#4ecf6b;color:#000;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.player-avatar{position:relative;}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(10,40,20,.95);border:1px solid rgba(201,162,39,.4);border-radius:10px;padding:12px 22px;color:var(--cream);font-size:.8rem;letter-spacing:.06em;z-index:200;transition:transform .3s ease;pointer-events:none;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{border-color:rgba(192,57,43,.5);color:#f07070;}
+.toast.success{border-color:rgba(78,207,107,.5);color:#4ecf6b;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(201,162,39,.25);border-radius:3px;}
+
+/* MOBILE */
+@media(max-width:600px){
+  .page{padding:16px 12px 80px;}
+  .casino-header{margin-bottom:20px;padding-top:10px;}
+  .panel{padding:16px 14px;margin-bottom:16px;}
+  .lobby-choices{flex-direction:column;}
+  .lobby-card{min-width:0;}
+  .setup-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .chip-setup-row{padding:10px;gap:8px;}
+  .chip-visual{width:36px;height:36px;font-size:.6rem;}
+  .chip-label-value{font-size:.9rem;}
+  .qty-input{width:52px;font-size:.9rem;}
+  .btn-start{padding:14px 32px;font-size:.85rem;}
+  .total-bar{padding:12px 16px;}
+  .total-value{font-size:1.3rem;}
+  .pot-bar{flex-wrap:wrap;gap:10px;}
+  .pot-value{font-size:1.6rem;}
+  .chip-row{padding:10px;gap:8px;}
+  .chip-visual-sm{width:34px;height:34px;font-size:.6rem;}
+  .chip-controls{gap:4px;}
+  .chip-qty-display{width:48px;font-size:.85rem;}
+  .ctrl-btn{width:30px;height:30px;font-size:1rem;}
+  .ctrl-btn-pot{font-size:.55rem;padding:0 6px;height:30px;}
+  .phase-bar{gap:6px;}
+  .phase-btn{font-size:.7rem;padding:8px 4px;min-width:0;}
+  .bet-actions{flex-direction:column;align-items:stretch;gap:10px;}
+  .bet-record-area{min-width:0;}
+  .action-buttons-row{display:flex;gap:8px;}
+  .action-btn{padding:10px 14px;font-size:.7rem;flex:1;align-self:auto;}
+  .stats-grid{grid-template-columns:1fr 1fr;gap:10px;}
+  .stat-card{padding:12px 10px;}
+  .stat-card-value{font-size:1.3rem;}
+  .phase-stat{min-width:100px;padding:10px;}
+  .btn-end-session{padding:14px 28px;font-size:.8rem;}
+  .btn-new-session{padding:13px 28px;font-size:.8rem;}
+  .room-code-value{font-size:1.4rem;}
+}
+@media(max-width:400px){
+  .setup-grid{grid-template-columns:1fr;}
+  .casino-name{font-size:1.9rem;}
+}
+</style>
+</head>
+<body>
+<div class="felt-bg"></div>
+<div class="table-rail"></div>
+<div class="toast" id="toast"></div>
+
+<!-- MODAL vincitore -->
+<div class="modal-overlay" id="win-modal">
+  <div class="modal">
+    <div class="modal-title">✦ Chi vince il piatto?</div>
+    <div class="modal-players" id="modal-players-list"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeWinModal()">Annulla</button>
+      <button class="btn-confirm-win" onclick="confirmWin()">Assegna Piatto ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL assegnazione blind -->
+<div class="modal-overlay" id="blind-modal">
+  <div class="modal">
+    <div class="modal-title">🂠 Assegna Small Blind</div>
+    <p class="blind-modal-info">Il Banchiere sceglie chi è lo <strong style="color:var(--gold-light)">Small Blind</strong> per questa mano. Il SB aprirà il Pre-Flop e tutti i turni successivi.</p>
+    <div class="modal-players" id="blind-modal-players-list"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeBlindModal()">Annulla</button>
+      <button class="btn-confirm-win" onclick="confirmBlind()">Conferma SB ✓</button>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <header class="casino-header">
+    <div class="casino-name"><span>Sharky's</span> Casino</div>
+    <div class="game-title">Texas Hold'em</div>
+    <div class="suits"><span>♥</span><span>♠</span><span>♦</span><span>♣</span></div>
+    <div class="header-divider"><div class="header-divider-icon">✦</div></div>
+  </header>
+
+  <!-- LOBBY -->
+  <div id="lobby-screen">
+    <div class="panel">
+      <div class="panel-title">✦ Benvenuto al Casinò di Sharky</div>
+      <p class="lobby-subtitle">Crea un nuovo tavolo o unisciti ad una partita in corso.</p>
+      <div class="bet-record-label" style="margin-bottom:8px;">Il tuo nome al tavolo:</div>
+      <input type="text" class="name-input" id="player-name-input" maxlength="20">
+      <div class="lobby-choices">
+        <div class="lobby-card" onclick="createLobby()">
+          <div class="lobby-card-icon">🏦</div>
+          <div class="lobby-card-title">Crea Un Tavolo</div>
+          <div class="lobby-card-desc">Sei il Banchiere. Imposti le fishes, condividi il codice e gestisci il piatto.</div>
+        </div>
+        <div class="lobby-card" onclick="showJoinArea()">
+          <div class="lobby-card-icon">🃏</div>
+          <div class="lobby-card-title">Unisciti Ad Un Tavolo</div>
+          <div class="lobby-card-desc">Inserisci il codice del Banchiere per sederti al suo tavolo.</div>
+        </div>
+      </div>
+      <div id="join-area" style="display:none;margin-top:24px;">
+        <div class="lobby-join-label">Codice Tavolo</div>
+        <div class="lobby-join-row">
+          <input type="text" class="lobby-code-input" id="join-code-input" placeholder="ABCDEF" maxlength="6">
+          <button class="btn-gold" onclick="joinLobby()">Entra →</button>
+        </div>
+      </div>
+    </div>
+    <div class="net-bar">
+      <div class="net-dot connecting" id="lobby-net-dot"></div>
+      <span id="lobby-net-label">Inizializzazione…</span>
+    </div>
+  </div>
+
+  <!-- SETUP (banchiere) -->
+  <div id="setup-screen" style="display:none;">
+    <div id="room-code-box" class="room-code-display">
+      <div>
+        <div class="room-code-label">Codice Tavolo · Condividi con i giocatori</div>
+        <div class="room-code-value" id="room-code-value">——</div>
+      </div>
+      <button class="btn-copy" id="copy-btn" onclick="copyRoomCode()">Copia</button>
+    </div>
+    <div class="net-bar">
+      <div class="net-dot connected"></div>
+      <span id="setup-net-label">Tavolo Aperto · In attesa dei giocatori</span>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Giocatori Connessi</div>
+      <div class="players-list" id="setup-players-list"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Imposta le Fishes</div>
+      <p style="font-size:.78rem;color:rgba(255,255,255,.45);font-family:'Cinzel',serif;letter-spacing:.08em;margin-bottom:20px;">
+        Scegli quante fishes ha ogni giocatore per iniziare la sessione.
+      </p>
+      <div class="setup-grid" id="setup-grid"></div>
+      <button class="btn-start" onclick="startGame()">Inizia Sessione ▶</button>
+    </div>
+  </div>
+
+  <!-- WAITING (giocatori) -->
+  <div id="waiting-screen" style="display:none;">
+    <div class="net-bar">
+      <div class="net-dot connected"></div>
+      <span>Connesso · In attesa che il Banchiere dia il via…</span>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Giocatori al Tavolo</div>
+      <div class="players-list" id="waiting-players-list"></div>
+    </div>
+    <div class="panel" style="text-align:center;padding:40px 28px;">
+      <div style="font-size:2rem;margin-bottom:16px;">⏳</div>
+      <div style="font-size:.85rem;color:rgba(255,255,255,.5);letter-spacing:.1em;">Il Banchiere sta configurando le fishes…</div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div id="game-screen" style="display:none;">
+    <div class="net-bar">
+      <div class="net-dot connected"></div>
+      <span id="game-net-label">Sessione in corso</span>
+    </div>
+    <div class="pot-bar">
+      <div>
+        <div class="pot-label">🏆 Piatto</div>
+        <div class="pot-value" id="pot-display">0</div>
+      </div>
+      <div class="pot-actions" id="pot-actions"></div>
+    </div>
+    <div class="sidepot-bar" id="sidepot-bar">
+      <div class="sidepot-bar-title">⚡ Side Pots</div>
+      <div class="sidepot-list" id="sidepot-list"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Tavolo</div>
+      <div class="players-list" id="game-players-list"></div>
+    </div>
+    <div class="total-bar">
+      <div><div class="total-label">Il Tuo Stack</div></div>
+      <div class="total-value" id="total-display">0</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Fase di Gioco</div>
+      <div class="phase-bar">
+        <button class="phase-btn active" data-phase="Pre-Flop" onclick="setPhase('Pre-Flop',this)">Pre-Flop<span class="phase-confirmed-count"></span></button>
+        <button class="phase-btn" data-phase="Flop" onclick="setPhase('Flop',this)">Flop<span class="phase-confirmed-count"></span></button>
+        <button class="phase-btn" data-phase="Turn" onclick="setPhase('Turn',this)">Turn<span class="phase-confirmed-count"></span></button>
+        <button class="phase-btn" data-phase="River" onclick="setPhase('River',this)">River<span class="phase-confirmed-count"></span></button>
+        <button class="phase-btn showdown-btn" data-phase="Showdown" onclick="setPhase('Showdown',this)">Showdown<span class="phase-confirmed-count"></span></button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Le Tue Fishes</div>
+      <div class="chips-grid" id="chips-grid"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Invia Puntata</div>
+      <div class="folded-notice" id="folded-notice">🂠 Hai foldato questa mano · Le tue fishes sono nel piatto</div>
+      <div class="min-bet-notice" id="min-bet-notice">⚠ Puntata minima richiesta: <strong id="min-bet-value">0</strong></div>
+      <!-- Azioni rapide: visibili solo quando non sei il primo a puntare nel turno -->
+      <div class="bet-quick-actions" id="bet-quick-actions" style="display:none;">
+        <button class="btn-fold" onclick="doFold()" title="Rinuncia alla mano · le fishes puntate restano al piatto">✕ Fold</button>
+        <button class="btn-call" id="btn-call" onclick="doCall()" title="Equipara la puntata minima">= Vedi</button>
+        <button class="btn-raise-custom" onclick="showRaiseArea()" title="Punta un importo personalizzato">↑ Rilancia</button>
+      </div>
+      <div id="raise-area">
+        <div class="bet-section-divider" id="raise-divider" style="display:none;">oppure inserisci importo</div>
+        <div class="bet-actions">
+          <div class="bet-record-area">
+            <div class="bet-record-label">Valore (fishes)</div>
+            <div class="bet-input-row">
+              <input type="number" class="bet-value-input" id="bet-input" placeholder="0" min="0">
+            </div>
+          </div>
+          <div class="action-buttons-row">
+            <button class="action-btn btn-bet" onclick="recordAction('bet')">Conferma Puntata</button>
+            <button class="action-btn btn-cancel-bet" onclick="cancelBet()">Annulla</button>
+            <button class="action-btn btn-allin" onclick="doAllIn()" id="btn-allin">ALL-IN 🔥</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Log Mano</div>
+      <div class="hand-log" id="hand-log">
+        <div style="color:rgba(255,255,255,.3);font-size:.78rem;font-style:italic;font-family:'Playfair Display',serif;text-align:center;padding:20px 0;">Nessuna azione registrata…</div>
+      </div>
+    </div>
+    <div class="end-session-wrapper">
+      <button class="btn-end-session" onclick="endSession()">Termina Sessione</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div id="stats-screen" style="display:none;">
+    <div class="panel">
+      <div class="panel-title">✦ Riepilogo Sessione</div>
+      <div class="stats-grid" id="stats-grid"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Puntate per Fase</div>
+      <div class="phase-breakdown" id="phase-breakdown"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">✦ Fishes per Taglio</div>
+      <div class="chips-summary" id="chips-summary"></div>
+    </div>
+    <div style="text-align:center;margin-top:8px;">
+      <button class="btn-new-session" onclick="newSession()">↺ Nuova Sessione</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────────────────
+//  COSTANTI
+// ────────────────────────────────────────────────────────────
+const CHIPS = [
+  {value:1,  label:'Bianca', color:'#d8d4cc',textColor:'#333'},
+  {value:5,  label:'Rossa',  color:'#c0392b',textColor:'#fff'},
+  {value:15, label:'Blu',    color:'#2471a3',textColor:'#fff'},
+  {value:25, label:'Verde',  color:'#1e8449',textColor:'#fff'},
+  {value:50, label:'Viola',  color:'#7d3c98',textColor:'#fff'},
+  {value:100,label:'Nera',   color:'#2c3e50',textColor:'#ddd'},
+  {value:200,label:'Gialla', color:'#d4ac0d',textColor:'#111'},
+];
+
+// ────────────────────────────────────────────────────────────
+//  STATO GLOBALE
+// ────────────────────────────────────────────────────────────
+let peer        = null;
+let myId        = '';
+let myName      = '';
+let isBanker    = false;
+let roomCode    = '';
+
+// Banchiere: mappa peerId → DataConnection
+let conns       = {};
+
+// Giocatore: connessione verso il banchiere
+let bankerConn  = null;
+
+// ── All-In ────────────────────────────────────────────────
+// Set dei playerIds che hanno dichiarato All-In in questa mano
+let allInPlayers = new Set();
+
+// Side pots: array di { amount, eligibleIds: [playerId,...], label }
+// sidePots[0] = main pot (tutti eleggibili),
+// sidePots[1+] = pots laterali per chi non è all-in
+let sidePots = [];
+
+// Lista giocatori (master nel banchiere, snapshot nei client)
+// [{id, name, qtys:{val:qty}, startQtys:{}}]
+let players     = [];
+
+// Stato personale
+let myQtys      = {};
+let myStartQtys = {};
+let setupQtys   = {};
+
+let pot           = 0;
+let potChips      = {};
+let currentPhase  = 'Pre-Flop';
+let log           = [];
+let selectedWinner = null;
+
+// ── BLIND & PUNTATA MINIMA ──────────────────────────────────
+// ID del giocatore designato come Small Blind per la mano corrente
+let smallBlindId  = null;
+// ID del Big Blind (calcolato automaticamente come giocatore successivo al SB)
+let bigBlindId    = null;
+// Puntata minima corrente per la fase in corso
+// { amount: number, firstBettorId: string|null }
+let phaseMinBet   = { amount: 0, firstBettorId: null };
+// Tiene traccia dell'ID scelto nel modal blind
+let selectedBlind = null;
+
+// ── FOLD & PUNTATE PER FASE ──────────────────────────────────
+// Giocatori che hanno foldato nella mano corrente (Set di ID)
+let foldedPlayers = new Set();
+// Quanto ha già puntato ogni giocatore nella fase corrente: { playerId: amount }
+let playerPhaseBets = {};
+// Flag per mostrare/nascondere il raise area
+let raiseAreaVisible = false;
+
+// ────────────────────────────────────────────────────────────
+//  PERSISTENZA SESSIONE
+// ────────────────────────────────────────────────────────────
+const SS_KEY = 'sharkys_session';
+
+function saveSession() {
+  try {
+    const data = {
+      myId, myName, isBanker, roomCode,
+      myQtys, myStartQtys, setupQtys,
+      pot, potChips, currentPhase, log, players,
+      smallBlindId, bigBlindId, phaseMinBet,
+      foldedPlayers: [...foldedPlayers], playerPhaseBets,
+      screen: getCurrentScreen(),
+      ts: Date.now()
+    };
+    sessionStorage.setItem(SS_KEY, JSON.stringify(data));
+  } catch(e) {}
+}
+
+function clearSession() {
+  sessionStorage.removeItem(SS_KEY);
+}
+
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function getCurrentScreen() {
+  const screens = ['lobby-screen','setup-screen','waiting-screen','game-screen','stats-screen'];
+  for (const s of screens) {
+    const el = document.getElementById(s);
+    if (el && el.style.display !== 'none') return s;
+  }
+  return 'lobby-screen';
+}
+
+// Salva automaticamente lo stato a ogni cambiamento significativo
+function autoSave() { saveSession(); }
+
+// ────────────────────────────────────────────────────────────
+//  TOAST
+// ────────────────────────────────────────────────────────────
+let _toastT = null;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show '+type;
+  clearTimeout(_toastT);
+  _toastT = setTimeout(()=>t.className='toast', 3200);
+}
+
+// ────────────────────────────────────────────────────────────
+//  SCREEN HELPER
+// ────────────────────────────────────────────────────────────
+function show(id) {
+  ['lobby-screen','setup-screen','waiting-screen','game-screen','stats-screen']
+    .forEach(s => document.getElementById(s).style.display = s===id?'block':'none');
+  autoSave();
+}
+
+// ────────────────────────────────────────────────────────────
+//  PEER INIT
+// ────────────────────────────────────────────────────────────
+function makePeer(requestedId) {
+  return new Promise((res, rej) => {
+    const p = requestedId ? new Peer(requestedId, {debug:0}) : new Peer({debug:0});
+    p.on('open', id => { myId = id; res(p); });
+    p.on('error', err => {
+      if (err.type === 'unavailable-id') {
+        // ID già preso, genera casuale
+        const p2 = new Peer({debug:0});
+        p2.on('open', id => { myId = id; res(p2); });
+        p2.on('error', rej);
+      } else { rej(err); }
+    });
+  });
+}
+
+// ────────────────────────────────────────────────────────────
+//  LOBBY STATUS
+// ────────────────────────────────────────────────────────────
+function setLobbyStatus(state, msg) {
+  const dot = document.getElementById('lobby-net-dot');
+  const lbl = document.getElementById('lobby-net-label');
+  dot.className = 'net-dot '+state;
+  if (msg) lbl.textContent = msg;
+}
+
+// ────────────────────────────────────────────────────────────
+//  CREA LOBBY (banchiere)
+// ────────────────────────────────────────────────────────────
+async function createLobby() {
+  const name = document.getElementById('player-name-input').value.trim();
+  if (!name) { showToast('Inserisci il tuo nome prima di continuare','error'); return; }
+  myName = name; isBanker = true;
+  setLobbyStatus('connecting','Creazione lobby in corso…');
+
+  try {
+    // Codice 6 lettere maiuscole
+    const code = Array.from({length:6}, ()=>'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*23)]).join('');
+    roomCode = code;
+    peer = await makePeer(code);
+    peer.on('connection', handleIncoming);
+    peer.on('disconnected', ()=>peer.reconnect());
+
+    // Il banchiere è il primo giocatore
+    players = [{id:myId, name:myName, qtys:{}, startQtys:{}}];
+
+    document.getElementById('room-code-value').textContent = roomCode;
+    buildSetup();
+    renderSetupPlayers();
+    show('setup-screen');
+    setLobbyStatus('connected','');
+    autoSave();
+  } catch(e) {
+    setLobbyStatus('error','Errore creazione lobby. Riprova.');
+    showToast('Errore di rete','error');
+    console.error(e);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  UNISCITI (giocatore)
+// ────────────────────────────────────────────────────────────
+function showJoinArea() {
+  const a = document.getElementById('join-area');
+  a.style.display = a.style.display==='none'?'block':'none';
+}
+
+async function joinLobby(isRejoin=false) {
+  const name = isRejoin ? myName : document.getElementById('player-name-input').value.trim();
+  const code = isRejoin ? roomCode : document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (!name) { showToast('Inserisci il tuo nome prima di continuare','error'); return; }
+  if (code.length < 4) { showToast('Inserisci un codice valido','error'); return; }
+  myName = name; roomCode = code; isBanker = false;
+  setLobbyStatus('connecting','Connessione alla lobby…');
+
+  try {
+    peer = await makePeer(null);
+    peer.on('disconnected', ()=>peer.reconnect());
+
+    bankerConn = peer.connect(code, {reliable:true});
+
+    bankerConn.on('open', ()=>{
+      // Se è un rejoin, invia REJOIN con il vecchio peerId così il banchiere può aggiornare il record
+      if (isRejoin) {
+        sendMsg(bankerConn, {type:'REJOIN', id:myId, name:myName, oldId:myId});
+      } else {
+        sendMsg(bankerConn, {type:'JOIN', id:myId, name:myName});
+      }
+      myId = peer.id; // aggiorna myId con il nuovo peer ID
+      show('waiting-screen');
+      setLobbyStatus('connected','Connesso alla lobby');
+      autoSave();
+    });
+    bankerConn.on('data', onDataFromBanker);
+    bankerConn.on('close', ()=>{
+      showToast('Disconnesso dalla lobby','error');
+      // Tenta riconnessione automatica dopo 2s
+      setTimeout(()=>{ if (roomCode) joinLobby(true); }, 2000);
+    });
+    bankerConn.on('error', ()=>{
+      setLobbyStatus('error','Lobby non trovata o codice errato.');
+      showToast('Lobby non trovata','error');
+    });
+  } catch(e) {
+    setLobbyStatus('error','Errore di connessione.');
+    showToast('Errore di connessione','error');
+    console.error(e);
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  BANCHIERE: connessioni in ingresso
+// ────────────────────────────────────────────────────────────
+function handleIncoming(conn) {
+  conns[conn.peer] = conn;
+  conn.on('data', data => onDataFromPlayer(conn, data));
+  conn.on('close', ()=>{
+    delete conns[conn.peer];
+    players = players.filter(p=>p.id!==conn.peer);
+    broadcastPlayers();
+    renderSetupPlayers();
+    if (document.getElementById('game-screen').style.display!=='none') renderGamePlayers();
+    autoSave();
+  });
+}
+
+function onDataFromPlayer(conn, data) {
+  // JOIN: nuovo giocatore
+  if (data.type==='JOIN') {
+    if (!players.find(p=>p.id===data.id))
+      players.push({id:data.id, name:data.name, qtys:{}, startQtys:{}});
+    renderSetupPlayers();
+    broadcastPlayers();
+    autoSave();
+    showToast(data.name+' è entrato al tavolo ♠','success');
+
+    // Se la partita è già in corso, manda lo stato completo al nuovo arrivato
+    const gameActive = document.getElementById('game-screen').style.display !== 'none';
+    if (gameActive) {
+      sendMsg(conn, {type:'GAME_REJOIN', setupQtys, players, pot, potChips, currentPhase, smallBlindId, bigBlindId, phaseMinBet, foldedPlayers:[...foldedPlayers], playerPhaseBets});
+    }
+  }
+  // REJOIN: giocatore che si riconnette dopo refresh
+  if (data.type==='REJOIN') {
+    // Aggiorna il peerId del giocatore con il nuovo conn.peer
+    let pl = players.find(p=>p.name===data.name);
+    if (pl) {
+      const oldId = pl.id;
+      pl.id = conn.peer;
+      // Aggiorna anche in conns (già fatto dall'handleIncoming)
+    } else {
+      players.push({id:conn.peer, name:data.name, qtys:{}, startQtys:{}});
+    }
+    broadcastPlayers();
+    renderSetupPlayers();
+    if (document.getElementById('game-screen').style.display!=='none') renderGamePlayers();
+    autoSave();
+    showToast(data.name+' è rientrato al tavolo ♻','success');
+
+    // Manda lo stato attuale (setup o game)
+    const gameActive2 = document.getElementById('game-screen').style.display !== 'none';
+    if (gameActive2) {
+      sendMsg(conn, {type:'GAME_REJOIN', setupQtys, players, pot, potChips, currentPhase, smallBlindId, bigBlindId, phaseMinBet, foldedPlayers:[...foldedPlayers], playerPhaseBets});
+    } else {
+      sendMsg(conn, {type:'PLAYERS_UPDATE', players});
+    }
+  }
+  if (data.type==='CHIP_UPDATE') {
+    const pl = players.find(p=>p.id===data.id);
+    if (pl) { pl.qtys = data.qtys; renderGamePlayers(); broadcastPlayers(); autoSave(); }
+  }
+  if (data.type==='PLAYER_FOLD') {
+    foldedPlayers.add(data.id);
+    // Il giocatore foldato è considerato "confermato" (non serve attendere la sua puntata)
+    if (!phaseConfirmed[currentPhase]) phaseConfirmed[currentPhase] = new Set();
+    phaseConfirmed[currentPhase].add(data.id);
+    const foldEntry = data.entry;
+    broadcast({ type: 'FOLD_UPDATE', id: data.id, foldedPlayers: [...foldedPlayers], entry: foldEntry });
+    // NON broadcastiamo LOG_ENTRY separatamente: FOLD_UPDATE già contiene l'entry e i client la loggano lì.
+    // Il banchiere logga localmente con il nome del giocatore (foldEntry.who = nome del giocatore)
+    addLogEntry(foldEntry.phase, foldEntry.type, 0, foldEntry.who);
+    renderGamePlayers();
+    checkPhaseAdvanceWithFolds();
+    autoSave();
+  }
+  if (data.type==='PLAYER_RAISE') {
+    // Un giocatore ha rilanciato: resetta le conferme di chi non ha ancora eguagliato
+    // Viene già gestito via POT_ADD con newMinBet più alto; qui forziamo il reset dei confermati
+    // (eccetto chi ha foldato)
+    const newAmount = data.newMinBet ? data.newMinBet.amount : 0;
+    const oldAmount = phaseMinBet.amount;
+    // Se la puntata è più alta del minimo attuale, resetta i confermati (tranne foldati)
+    if (newAmount > oldAmount) {
+      const activePlayers = players.filter(p => !foldedPlayers.has(p.id));
+      // Mantieni confermato solo chi ha già puntato >= newAmount in questa fase
+      const newConfirmed = new Set();
+      activePlayers.forEach(p => {
+        if ((playerPhaseBets[p.id] || 0) >= newAmount) newConfirmed.add(p.id);
+      });
+      // Chi ha foldato rimane confermato
+      foldedPlayers.forEach(id => newConfirmed.add(id));
+      phaseConfirmed[currentPhase] = newConfirmed;
+      broadcast({ type: 'PHASE_CONFIRMED_UPDATE', confirmed: [...newConfirmed] });
+    }
+  }
+  if (data.type==='POT_ADD') {
+    pot += data.amount;
+    if (data.chipBreakdown) {
+      Object.entries(data.chipBreakdown).forEach(([v,q])=>{ potChips[v]=(potChips[v]||0)+q; });
+      // Traccia contributo per rimborso
+      if (!potContributions[data.id]) potContributions[data.id] = {};
+      Object.entries(data.chipBreakdown).forEach(([v,q])=>{
+        potContributions[data.id][v] = (potContributions[data.id][v]||0)+q;
+      });
+    }
+    // Aggiorna playerPhaseBets per il giocatore remoto
+    const prevBet = playerPhaseBets[data.id] || 0;
+    const newTotalBet = data.totalPhaseBetAfter !== undefined ? data.totalPhaseBetAfter : prevBet + data.amount;
+    playerPhaseBets[data.id] = newTotalBet;
+
+    // Aggiorna la puntata minima se il messaggio porta un nuovo minimo
+    const wasFirstBet = !phaseMinBet.firstBettorId;
+    const oldMinAmount = phaseMinBet.amount;
+    if (data.newMinBet && data.newMinBet.firstBettorId) {
+      if (!phaseMinBet.firstBettorId || data.newMinBet.amount > phaseMinBet.amount) {
+        phaseMinBet = data.newMinBet;
+      }
+    }
+
+    // Segna/resetta le conferme per questa fase
+    if (!phaseConfirmed[currentPhase]) phaseConfirmed[currentPhase] = new Set();
+
+    // Registra all-in del giocatore remoto
+    if (data.isAllIn) {
+      allInPlayers.add(data.id);
+      PHASE_ORDER.forEach(ph => {
+        if (!phaseConfirmed[ph]) phaseConfirmed[ph] = new Set();
+        phaseConfirmed[ph].add(data.id);
+      });
+      broadcast({ type: 'ALLIN_UPDATE', allInPlayers: [...allInPlayers] });
+    }
+
+    if (data.isRaise && phaseMinBet.amount > oldMinAmount) {
+      // Rialzo: resetta le conferme, mantieni solo chi ha già puntato >= nuovo minimo, foldati e all-in
+      const newConfirmed = new Set();
+      players.forEach(p => {
+        if (foldedPlayers.has(p.id) || allInPlayers.has(p.id)) { newConfirmed.add(p.id); return; }
+        if ((playerPhaseBets[p.id] || 0) >= phaseMinBet.amount) newConfirmed.add(p.id);
+      });
+      phaseConfirmed[currentPhase] = newConfirmed;
+      broadcast({ type: 'PHASE_CONFIRMED_UPDATE', confirmed: [...newConfirmed] });
+    } else {
+      phaseConfirmed[currentPhase].add(data.id);
+    }
+
+    // Propaga playerPhaseBets a tutti
+    broadcast({ type: 'PLAYER_PHASE_BETS_UPDATE', playerPhaseBets });
+    // Propaga il minimo aggiornato a tutti i giocatori
+    broadcast({type:'MIN_BET_UPDATE', phaseMinBet});
+    updateMinBetNotice();
+    // Se lo SB ha appena aperto le puntate, avvisa tutti (incluso il banchiere stesso)
+    if (wasFirstBet && data.id === smallBlindId) {
+      const sbPlayer = players.find(p=>p.id===data.id);
+      const sbName = sbPlayer ? sbPlayer.name : '?';
+      broadcast({type:'BETS_OPEN', sbName, amount: data.amount});
+      showBetsOpenPopup(sbName, data.amount);
+    }
+    // Ricalcola side pots
+    renderSidePots();
+    broadcastPot();
+    const entry = data.entry;
+    broadcast({type:'LOG_ENTRY', entry});
+    addLogEntry(entry.phase, data.isAllIn ? 'allin' : entry.type, entry.amount, entry.who);
+    updatePhaseButtons();
+    checkPhaseAdvance();
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  GIOCATORE: messaggi dal banchiere
+// ────────────────────────────────────────────────────────────
+function onDataFromBanker(data) {
+  if (data.type==='PLAYERS_UPDATE') {
+    players = data.players;
+    const me = players.find(p=>p.id===myId);
+    if (me) { myQtys={...me.qtys}; updateTotal(); }
+    if (document.getElementById('waiting-screen').style.display!=='none') renderWaitingPlayers();
+    if (document.getElementById('game-screen').style.display!=='none') renderGamePlayers();
+    autoSave();
+  }
+  if (data.type==='GAME_START') {
+    setupQtys = data.setupQtys; players = data.players; pot=0; log=[];
+    CHIPS.forEach(c=>{myQtys[c.value]=setupQtys[c.value]||0; myStartQtys[c.value]=myQtys[c.value];});
+    launchGameUI();
+    autoSave();
+  }
+  // Ricevuto dopo un REJOIN: ripristina lo stato di gioco completo
+  if (data.type==='GAME_REJOIN') {
+    setupQtys = data.setupQtys; players = data.players; pot=data.pot; potChips=data.potChips||{};
+    // Trova le mie qtys dall'elenco giocatori (il banchiere ha lo stato aggiornato)
+    const me = players.find(p=>p.name===myName);
+    if (me) {
+      myId = me.id; // sincronizza ID se cambiato
+      myQtys = {...me.qtys};
+      myStartQtys = {...me.startQtys};
+    } else {
+      CHIPS.forEach(c=>{myQtys[c.value]=setupQtys[c.value]||0; myStartQtys[c.value]=myQtys[c.value];});
+    }
+    if (data.currentPhase) currentPhase = data.currentPhase;
+    if (data.smallBlindId !== undefined) smallBlindId = data.smallBlindId;
+    if (data.bigBlindId !== undefined)   bigBlindId   = data.bigBlindId;
+    if (data.phaseMinBet !== undefined)  phaseMinBet  = data.phaseMinBet;
+    if (data.foldedPlayers !== undefined) foldedPlayers = new Set(data.foldedPlayers);
+    if (data.playerPhaseBets !== undefined) playerPhaseBets = data.playerPhaseBets;
+    launchGameUI();
+    // Ripristina fase attiva
+    document.querySelectorAll('.phase-btn').forEach(b=>{
+      b.classList.toggle('active', b.textContent.trim()===currentPhase);
+    });
+    autoSave();
+    showToast('Sessione ripristinata ✓','success');
+  }
+  if (data.type==='POT_UPDATE') { pot=data.pot; renderPot(); autoSave(); }
+  if (data.type==='BLIND_ASSIGN') {
+    smallBlindId = data.smallBlindId;
+    bigBlindId   = data.bigBlindId;
+    phaseMinBet  = { amount:0, firstBettorId:null };
+    // Nuova mano: reset fold e puntate per fase
+    if (data.smallBlindId) { foldedPlayers = new Set(); playerPhaseBets = {}; raiseAreaVisible = false; }
+    renderGamePlayers();
+    updateMinBetNotice();
+    updateBetQuickActions();
+    updateNetLabel();
+    const sbName = players.find(p=>p.id===smallBlindId)?.name || '?';
+    if (data.smallBlindId) showToast('Small Blind: ' + sbName + ' 🂠', 'success');
+    autoSave();
+  }
+  if (data.type==='MIN_BET_UPDATE') {
+    phaseMinBet = data.phaseMinBet;
+    updateMinBetNotice();
+    updateBetQuickActions();
+    autoSave();
+  }
+  if (data.type==='BETS_OPEN') {
+    showBetsOpenPopup(data.sbName, data.amount);
+  }
+  if (data.type==='PHASE_CHANGE') {
+    currentPhase = data.phase;
+    phaseMinBet = { amount:0, firstBettorId:null };
+    playerPhaseBets = {};
+    raiseAreaVisible = false;
+    document.querySelectorAll('.phase-btn').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.phase === currentPhase);
+    });
+    updatePuntaButtons();
+    updateMinBetNotice();
+    updateBetQuickActions();
+    const toastMsg = currentPhase === 'Showdown'
+      ? 'Showdown! Nessuna puntata ammessa 🃏'
+      : 'Fase avanzata: ' + currentPhase + ' ✦';
+    showToast(toastMsg, currentPhase === 'Showdown' ? 'error' : 'success');
+    autoSave();
+  }
+  if (data.type==='POT_REFUND') {
+    players = data.players;
+    const me = players.find(p=>p.id===myId);
+    if (me) { myQtys={...me.qtys}; buildChipsGrid(); updateTotal(); }
+    foldedPlayers = new Set();
+    allInPlayers = new Set();
+    sidePots = [];
+    playerPhaseBets = {};
+    raiseAreaVisible = false;
+    renderGamePlayers();
+    smallBlindId = null; bigBlindId = null;
+    phaseMinBet = { amount:0, firstBettorId:null };
+    document.getElementById('sidepot-bar')?.classList.remove('visible');
+    updateAllInState();
+    updateMinBetNotice();
+    updateBetQuickActions();
+    showResultPopup('draw');
+    autoSave();
+  }
+  if (data.type==='WIN_ASSIGNED') {
+    players = data.players;
+    if (data.winnerId === myId && data.wonChips) {
+      Object.entries(data.wonChips).forEach(([v,q])=>{
+        myQtys[parseInt(v)] = (myQtys[parseInt(v)]||0) + q;
+      });
+      buildChipsGrid(); updateTotal();
+      showResultPopup('win');
+    } else {
+      const me = players.find(p=>p.id===myId);
+      if (me) { myQtys={...me.qtys}; buildChipsGrid(); updateTotal(); }
+      showResultPopup('lose');
+    }
+    smallBlindId = null; bigBlindId = null;
+    phaseMinBet = { amount:0, firstBettorId:null };
+    foldedPlayers = new Set();
+    allInPlayers = new Set();
+    sidePots = [];
+    playerPhaseBets = {};
+    raiseAreaVisible = false;
+    document.getElementById('sidepot-bar')?.classList.remove('visible');
+    updateAllInState();
+    updateMinBetNotice();
+    updateBetQuickActions();
+    renderGamePlayers();
+    const w = players.find(p=>p.id===data.winnerId);
+    addLogEntry('Piatto','win',data.amount, data.winnerId===myId?'Tu':(w?w.name:''));
+    updatePuntaButtons();
+    autoSave();
+  }
+  if (data.type==='LOG_ENTRY') {
+    const e = data.entry;
+    if (e.playerId && e.playerId === myId) return;
+    addLogEntry(e.phase, e.isAllIn ? 'allin' : e.type, e.amount, e.who);
+  }
+  if (data.type==='ALLIN_UPDATE') {
+    allInPlayers = new Set(data.allInPlayers || []);
+    // Badge in-game per chi è all-in
+    renderGamePlayers();
+    updateAllInState();
+    updateBetQuickActions();
+    autoSave();
+  }
+  if (data.type==='SIDEPOTS_UPDATE') {
+    sidePots = data.sidePots || [];
+    // Render lato client (solo display, senza ricalcolo)
+    const bar  = document.getElementById('sidepot-bar');
+    const list = document.getElementById('sidepot-list');
+    if (!bar || !list) return;
+    if (sidePots.length < 2) { bar.classList.remove('visible'); return; }
+    bar.classList.add('visible');
+    list.innerHTML = sidePots.map(sp => {
+      const eligibleNames = sp.eligibleIds.map(id => {
+        const pl = players.find(p=>p.id===id);
+        return pl ? esc(pl.name) : '?';
+      }).join(', ');
+      const label = sp.isAllInPot
+        ? `Main Pot · include All-In ${esc(players.find(p=>p.id===sp.allInPlayerId)?.name||'?')}`
+        : `Side Pot · giocatori attivi`;
+      return `<div class="sidepot-row">
+        <div>
+          <div class="sidepot-label">⚡ <span>${label}</span></div>
+          <div class="sidepot-eligible">Eleggibili: ${eligibleNames}</div>
+        </div>
+        <div class="sidepot-value">${sp.amount}</div>
+      </div>`;
+    }).join('');
+    autoSave();
+  }
+  if (data.type==='FOLD_UPDATE') {
+    foldedPlayers = new Set(data.foldedPlayers || []);
+    const e = data.entry;
+    if (e && e.playerId !== myId) addLogEntry(e.phase, e.type, 0, e.who);
+    renderGamePlayers();
+    updateBetQuickActions();
+    updateMinBetNotice();
+    autoSave();
+  }
+  if (data.type==='PHASE_CONFIRMED_UPDATE') {
+    phaseConfirmed[currentPhase] = new Set(data.confirmed || []);
+    updatePhaseButtons();
+    updateMinBetNotice();
+    updateBetQuickActions();
+    autoSave();
+  }
+  if (data.type==='PLAYER_PHASE_BETS_UPDATE') {
+    playerPhaseBets = data.playerPhaseBets || {};
+    updateBetQuickActions();
+    updateMinBetNotice();
+    autoSave();
+  }
+  if (data.type==='SESSION_END') {
+    clearSession();
+    computeStats(); show('stats-screen');
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  MESSAGING
+// ────────────────────────────────────────────────────────────
+function sendMsg(conn, data) { try { conn.send(data); } catch(e){} }
+function broadcast(data) { Object.values(conns).forEach(c=>sendMsg(c,data)); }
+function broadcastPlayers() { broadcast({type:'PLAYERS_UPDATE', players}); autoSave(); }
+function broadcastPot() { broadcast({type:'POT_UPDATE', pot}); renderPot(); autoSave(); }
+
+// ────────────────────────────────────────────────────────────
+//  SETUP (banchiere)
+// ────────────────────────────────────────────────────────────
+function buildSetup() {
+  const grid = document.getElementById('setup-grid');
+  grid.innerHTML = '';
+  CHIPS.forEach(chip=>{
+    setupQtys[chip.value] = 20;
+    const row = document.createElement('div');
+    row.className = 'chip-setup-row';
+    row.innerHTML = `
+      <div class="chip-visual" style="background:${chip.color};color:${chip.textColor};">${chip.value}</div>
+      <div class="chip-label">
+        <div class="chip-label-value">${chip.value}</div>
+        <div class="chip-label-name">${chip.label}</div>
+      </div>
+      <input type="number" class="qty-input" value="20" min="0"
+        onchange="setupQtys[${chip.value}]=parseInt(this.value)||0">`;
+    grid.appendChild(row);
+  });
+}
+
+function renderSetupPlayers() {
+  const el = document.getElementById('setup-players-list');
+  if (!players.length) {
+    el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:.78rem;text-align:center;padding:16px;font-family:\'Playfair Display\',serif;font-style:italic;">In attesa di giocatori…</div>';
+    return;
+  }
+  el.innerHTML = players.map(pl=>`
+    <div class="player-row ${pl.id===myId?'is-me':''}">
+      <div class="player-avatar">🃏</div>
+      <div class="player-name">${esc(pl.name)}</div>
+      <div class="player-role ${pl.id===myId?'banker':''}">${pl.id===myId?'Banchiere':'Giocatore'}</div>
+    </div>`).join('');
+}
+
+function renderWaitingPlayers() {
+  const el = document.getElementById('waiting-players-list');
+  el.innerHTML = players.map(pl=>`
+    <div class="player-row ${pl.id===myId?'is-me':''}">
+      <div class="player-avatar">🃏</div>
+      <div class="player-name">${esc(pl.name)}</div>
+      <div class="player-role ${pl.id===roomCode?'banker':''}">${pl.id===roomCode?'Banchiere':''}</div>
+    </div>`).join('');
+}
+
+// ────────────────────────────────────────────────────────────
+//  START GAME (banchiere)
+// ────────────────────────────────────────────────────────────
+function startGame() {
+  document.querySelectorAll('#setup-grid .qty-input').forEach((inp,i)=>{
+    setupQtys[CHIPS[i].value] = parseInt(inp.value)||0;
+  });
+  players.forEach(pl=>{
+    CHIPS.forEach(c=>{pl.qtys[c.value]=setupQtys[c.value]; pl.startQtys[c.value]=setupQtys[c.value];});
+  });
+  CHIPS.forEach(c=>{myQtys[c.value]=setupQtys[c.value]; myStartQtys[c.value]=setupQtys[c.value];});
+  pot=0; potChips={}; pendingChips={}; log=[];
+  broadcast({type:'GAME_START', setupQtys, players});
+  launchGameUI();
+  autoSave();
+}
+
+// ────────────────────────────────────────────────────────────
+//  GAME UI
+// ────────────────────────────────────────────────────────────
+function launchGameUI() {
+  show('game-screen');
+  // Resetta tracciamento fase e contributi all'avvio
+  potContributions = {};
+  foldedPlayers = new Set();
+  allInPlayers = new Set();
+  sidePots = [];
+  playerPhaseBets = {};
+  raiseAreaVisible = false;
+  PHASE_ORDER.forEach(ph => { phaseConfirmed[ph] = new Set(); });
+  buildChipsGrid(); updateTotal(); renderGamePlayers(); renderPot(); renderPotActions();
+  updatePhaseButtons();
+  updateMinBetNotice();
+  updateNetLabel();
+  updateBetQuickActions();
+  document.getElementById('hand-log').innerHTML =
+    '<div style="color:rgba(255,255,255,.3);font-size:.78rem;font-style:italic;font-family:\'Playfair Display\',serif;text-align:center;padding:20px 0;">Nessuna azione registrata…</div>';
+}
+
+function updateNetLabel() {
+  const el = document.getElementById('game-net-label');
+  if (!el) return;
+  const isSB = myId === smallBlindId;
+  const sbTag = isSB ? ' <span style="background:rgba(201,162,39,.25);color:var(--gold-light);font-size:.6rem;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:4px;border:1px solid rgba(201,162,39,.4);">🂠 SEI LO SMALL BLIND</span>' : '';
+  const role = isBanker ? ' · Banchiere · Codice: ' + roomCode : '';
+  el.innerHTML = 'Sessione in corso · <strong style="color:var(--cream);">' + esc(myName) + '</strong>' + role + sbTag;
+}
+
+// ────────────────────────────────────────────────────────────
+//  BETS OPEN POPUP
+// ────────────────────────────────────────────────────────────
+let _betsOpenT = null;
+function showBetsOpenPopup(sbName, amount) {
+  const el = document.getElementById('bets-open-overlay');
+  document.getElementById('bets-open-sb').textContent = sbName;
+  document.getElementById('bets-open-amount').textContent = amount;
+  el.classList.add('open');
+  clearTimeout(_betsOpenT);
+  _betsOpenT = setTimeout(() => el.classList.remove('open'), 4000);
+}
+function closeBetsOpenPopup() {
+  clearTimeout(_betsOpenT);
+  document.getElementById('bets-open-overlay').classList.remove('open');
+}
+
+function renderGamePlayers() {
+  const el = document.getElementById('game-players-list');
+  el.innerHTML = players.map(pl=>{
+    const stack = CHIPS.reduce((s,c)=>s+c.value*(pl.qtys[c.value]||0),0);
+    const isSB = pl.id === smallBlindId;
+    const isBB = pl.id === bigBlindId;
+    const isFolded = foldedPlayers.has(pl.id);
+    const isAllIn  = allInPlayers.has(pl.id);
+    const blindBadge = isSB ? '<span class="blind-badge sb">SB</span>' : (isBB ? '<span class="blind-badge bb">BB</span>' : '');
+    const foldBadge  = isFolded ? '<span class="fold-badge">Fold</span>' : '';
+    const allInBadge = isAllIn  ? '<span class="allin-badge">ALL-IN</span>' : '';
+    const confirmed = phaseConfirmed[currentPhase] && phaseConfirmed[currentPhase].has(pl.id);
+    return `<div class="player-row ${pl.id===myId?'is-me':''} ${confirmed?'bet-confirmed':''} ${isFolded?'folded':''}">
+      <div class="player-avatar">🃏</div>
+      <div class="player-name">${esc(pl.name)}${blindBadge}${foldBadge}${allInBadge}</div>
+      <div class="player-role ${pl.id===roomCode?'banker':''}">${pl.id===roomCode?'Banchiere':''}</div>
+      <div class="player-stack">${stack}</div>
+    </div>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────────────────────
+//  CHIPS
+// ────────────────────────────────────────────────────────────
+function buildChipsGrid() {
+  const grid = document.getElementById('chips-grid');
+  grid.innerHTML = '';
+  CHIPS.forEach(chip=>{
+    const row = document.createElement('div');
+    row.className = 'chip-row';
+    row.innerHTML = `
+      <div class="chip-visual-sm" style="background:${chip.color};color:${chip.textColor};">${chip.value}</div>
+      <div class="chip-controls">
+        <button class="ctrl-btn-pot" onclick="potChip(${chip.value})">Punta</button>
+        <input type="number" class="chip-qty-display" id="chip-qty-${chip.value}"
+          value="${myQtys[chip.value]||0}" min="0"
+          onchange="setChip(${chip.value},parseInt(this.value)||0)">
+
+      </div>`;
+    grid.appendChild(row);
+  });
+  updatePuntaButtons();
+}
+
+function adjChip(v,d) { setChip(v, Math.max(0,(myQtys[v]||0)+d)); }
+
+function updatePuntaButtons() {
+  const disabled = currentPhase === 'Showdown' || allInPlayers.has(myId);
+  document.querySelectorAll('.ctrl-btn-pot').forEach(btn => {
+    btn.classList.toggle('punta-disabled', disabled);
+  });
+}
+
+let pendingChips = {};
+
+// Contributi per rimborso: { playerId: { chipValue: qty, ... } }
+let potContributions = {};
+
+// Traccia chi ha già confermato la puntata nella fase corrente (solo banchiere)
+// { 'Pre-Flop': Set<playerId>, 'Flop': Set, ... }
+let phaseConfirmed = { 'Pre-Flop': new Set(), 'Flop': new Set(), 'Turn': new Set(), 'River': new Set(), 'Showdown': new Set() };
+
+const PHASE_ORDER = ['Pre-Flop', 'Flop', 'Turn', 'River', 'Showdown'];
+
+function potChip(v) {
+  if (currentPhase === 'Showdown') {
+    showToast('Showdown in corso · nessuna puntata ammessa','error');
+    return;
+  }
+  if ((myQtys[v]||0) <= 0) {
+    showToast('Non hai fishes da questo taglio','error');
+    return;
+  }
+  setChip(v, (myQtys[v]||0) - 1);
+  pendingChips[v] = (pendingChips[v]||0) + 1;
+  const inp = document.getElementById('bet-input');
+  inp.value = (parseInt(inp.value)||0)+v;
+  inp.style.borderColor='#f0a45a';
+  setTimeout(()=>inp.style.borderColor='',400);
+}
+
+function setChip(v, qty) {
+  myQtys[v] = qty;
+  const el = document.getElementById('chip-qty-'+v);
+  if (el) el.value = qty;
+  updateTotal();
+  // Sincronizza stack con banchiere
+  const me = players.find(p=>p.id===myId);
+  if (me) me.qtys = {...myQtys};
+  if (isBanker) { broadcastPlayers(); renderGamePlayers(); }
+  else if (bankerConn) sendMsg(bankerConn, {type:'CHIP_UPDATE', id:myId, qtys:myQtys});
+}
+
+function updateTotal() {
+  document.getElementById('total-display').textContent =
+    CHIPS.reduce((s,c)=>s+c.value*(myQtys[c.value]||0),0);
+}
+
+// ────────────────────────────────────────────────────────────
+//  PIATTO
+// ────────────────────────────────────────────────────────────
+function renderPot() { document.getElementById('pot-display').textContent = pot; }
+
+function renderPotActions() {
+  const el = document.getElementById('pot-actions');
+  el.innerHTML = isBanker
+    ? `<button class="btn-pot-action" onclick="openBlindModal()" title="Assegna Small Blind per questa mano">🂠 Blind</button>
+       <button class="btn-pot-action win-btn" onclick="openWinModal()">Assegna Vincitore</button>
+       <button class="btn-pot-action" onclick="clearPot()">Azzera Piatto</button>`
+    : '';
+}
+
+function clearPot() {
+  if (!isBanker) return;
+  if (pot === 0) { showToast('Il piatto è già vuoto','error'); return; }
+  if (!confirm('Azzera il piatto e rimborsa le fishes ai giocatori?')) return;
+
+  // Rimborsa ogni giocatore dei chip che ha versato
+  Object.entries(potContributions).forEach(([pid, chips]) => {
+    const pl = players.find(p => p.id === pid);
+    if (!pl) return;
+    Object.entries(chips).forEach(([v, q]) => {
+      const val = parseInt(v);
+      pl.qtys[val] = (pl.qtys[val] || 0) + q;
+      if (pid === myId) { myQtys[val] = (myQtys[val] || 0) + q; }
+    });
+  });
+
+  pot = 0; potChips = {}; potContributions = {};
+  foldedPlayers = new Set();
+  allInPlayers = new Set();
+  sidePots = [];
+  playerPhaseBets = {};
+  raiseAreaVisible = false;
+  // Resetta i confermati per tutte le fasi
+  PHASE_ORDER.forEach(ph => phaseConfirmed[ph] = new Set());
+  currentPhase = 'Pre-Flop';
+  phaseMinBet = { amount:0, firstBettorId:null };
+  smallBlindId = null; bigBlindId = null;
+
+  if (myId === myId) { buildChipsGrid(); updateTotal(); }
+
+  broadcast({ type: 'POT_REFUND', players });
+  broadcast({ type: 'PHASE_CHANGE', phase: 'Pre-Flop' });
+  broadcast({ type: 'BLIND_ASSIGN', smallBlindId:null, bigBlindId:null });
+  broadcast({ type: 'ALLIN_UPDATE', allInPlayers: [] });
+  broadcast({ type: 'SIDEPOTS_UPDATE', sidePots: [] });
+  broadcastPot();
+  broadcastPlayers();
+  renderGamePlayers();
+  document.getElementById('sidepot-bar')?.classList.remove('visible');
+  updateAllInState();
+  updatePhaseButtons();
+  showToast('Piatto azzerato · fishes restituite ai giocatori ↩');
+  showResultPopup('draw');
+  autoSave();
+}
+
+// ────────────────────────────────────────────────────────────
+//  WIN MODAL
+// ────────────────────────────────────────────────────────────
+function openWinModal() {
+  if (pot===0) { showToast('Il piatto è vuoto','error'); return; }
+  selectedWinner = null;
+  const el = document.getElementById('modal-players-list');
+  el.innerHTML = '';
+
+  // Se ci sono side pots, mostra un avviso sopra la lista
+  if (sidePots.length >= 2) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.7rem;color:var(--gold-light);letter-spacing:.06em;line-height:1.6;';
+    notice.innerHTML = '<strong>⚡ Side Pots attivi</strong><br>' + sidePots.map((sp,i) => {
+      const eligibleNames = sp.eligibleIds.map(id => players.find(p=>p.id===id)?.name||'?').join(', ');
+      const lbl = sp.isAllInPot ? `Main Pot (All-In)` : `Side Pot`;
+      return `${lbl}: <strong>${sp.amount}</strong> · ${eligibleNames}`;
+    }).join('<br>');
+    el.appendChild(notice);
+  }
+
+  players.forEach(pl=>{
+    const stack = CHIPS.reduce((s,c)=>s+c.value*(pl.qtys[c.value]||0),0);
+    const isAllIn = allInPlayers.has(pl.id);
+    const btn = document.createElement('button');
+    btn.className = 'modal-player-btn';
+    btn.innerHTML = `<div class="player-avatar">🃏</div><div class="modal-player-name">${esc(pl.name)}${isAllIn?'<span class="allin-badge">ALL-IN</span>':''}</div><div class="modal-player-stack">Stack: ${stack}</div>`;
+    btn.onclick = ()=>{
+      document.querySelectorAll('.modal-player-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected'); selectedWinner=pl.id;
+    };
+    el.appendChild(btn);
+  });
+  document.getElementById('win-modal').classList.add('open');
+}
+
+function closeWinModal() { document.getElementById('win-modal').classList.remove('open'); }
+
+// ────────────────────────────────────────────────────────────
+//  BLIND MODAL (banchiere)
+// ────────────────────────────────────────────────────────────
+function openBlindModal() {
+  if (!isBanker) return;
+  selectedBlind = null;
+  const el = document.getElementById('blind-modal-players-list');
+  el.innerHTML = '';
+  players.forEach(pl=>{
+    const stack = CHIPS.reduce((s,c)=>s+c.value*(pl.qtys[c.value]||0),0);
+    const btn = document.createElement('button');
+    btn.className = 'modal-player-btn' + (pl.id===smallBlindId?' selected':'');
+    btn.innerHTML = `<div class="player-avatar">🃏</div><div class="modal-player-name">${esc(pl.name)}</div><div class="modal-player-stack">Stack: ${stack}</div>`;
+    btn.onclick = ()=>{
+      document.querySelectorAll('#blind-modal-players-list .modal-player-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected'); selectedBlind=pl.id;
+    };
+    el.appendChild(btn);
+  });
+  document.getElementById('blind-modal').classList.add('open');
+}
+
+function closeBlindModal() { document.getElementById('blind-modal').classList.remove('open'); }
+
+function confirmBlind() {
+  if (!selectedBlind) { showToast('Seleziona lo Small Blind','error'); return; }
+  smallBlindId = selectedBlind;
+  // Big Blind = giocatore successivo nell'elenco
+  const idx = players.findIndex(p=>p.id===smallBlindId);
+  bigBlindId = players[(idx+1) % players.length].id;
+  // Reset puntata minima e fold per la nuova mano
+  phaseMinBet = { amount:0, firstBettorId:null };
+  foldedPlayers = new Set();
+  playerPhaseBets = {};
+  raiseAreaVisible = false;
+  // Reset fase a Pre-Flop
+  phaseConfirmed['Pre-Flop'] = new Set();
+  broadcastBlind();
+  renderGamePlayers();
+  updateMinBetNotice();
+  updateBetQuickActions();
+  updateNetLabel();
+  closeBlindModal();
+  const sbName = players.find(p=>p.id===smallBlindId)?.name || '?';
+  const bbName = players.find(p=>p.id===bigBlindId)?.name || '?';
+  showToast('SB: ' + sbName + ' · BB: ' + bbName + ' 🂠', 'success');
+  autoSave();
+}
+
+function broadcastBlind() {
+  broadcast({ type:'BLIND_ASSIGN', smallBlindId, bigBlindId });
+}
+
+// ────────────────────────────────────────────────────────────
+//  MIN BET NOTICE
+// ────────────────────────────────────────────────────────────
+function updateMinBetNotice() {
+  const notice = document.getElementById('min-bet-notice');
+  const valEl  = document.getElementById('min-bet-value');
+  if (!notice || !valEl) return;
+  const minAmt = getMyMinBet();
+  if (minAmt > 0 && !phaseConfirmed[currentPhase]?.has(myId)) {
+    valEl.textContent = minAmt;
+    notice.classList.add('visible');
+  } else {
+    notice.classList.remove('visible');
+  }
+}
+
+// Calcola la puntata minima che QUESTO giocatore deve fare ora
+function getMyMinBet() {
+  if (currentPhase === 'Showdown') return 0;
+  // Nessun blind assegnato → nessun minimo
+  if (!smallBlindId) return phaseMinBet.amount || 0;
+
+  if (currentPhase === 'Pre-Flop') {
+    // SB: nessun minimo (è il primo a decidere)
+    if (myId === smallBlindId) return 0;
+    // BB: deve almeno raddoppiare la puntata dello SB
+    if (myId === bigBlindId) {
+      return phaseMinBet.firstBettorId === smallBlindId && phaseMinBet.amount > 0
+        ? phaseMinBet.amount * 2
+        : 0;
+    }
+    // Gli altri: devono almeno eguagliare il BB (che è 2× SB)
+    // Il minimo per loro è il valore attuale di phaseMinBet.amount
+    // (aggiornato quando BB conferma, oppure se BB non ha ancora puntato, il doppio dell'SB)
+    return phaseMinBet.amount || 0;
+  }
+
+  // Flop/Turn/River: SB apre, minimo = 0; gli altri devono eguagliare la prima puntata
+  if (myId === smallBlindId && !phaseMinBet.firstBettorId) return 0;
+  return phaseMinBet.amount || 0;
+}
+
+function confirmWin() {
+  if (!selectedWinner) { showToast('Seleziona un vincitore','error'); return; }
+  const winner = players.find(p=>p.id===selectedWinner);
+  if (!winner) return;
+  const amount = pot;
+  Object.entries(potChips).forEach(([v,q])=>{
+    const val = parseInt(v);
+    winner.qtys[val] = (winner.qtys[val]||0) + q;
+    if (winner.id===myId) { myQtys[val]=(myQtys[val]||0)+q; }
+  });
+  if (winner.id===myId) { buildChipsGrid(); updateTotal(); }
+  const wonChips = {...potChips};
+  pot=0; potChips={}; potContributions={};
+  foldedPlayers = new Set();
+  allInPlayers = new Set();
+  sidePots = [];
+  playerPhaseBets = {};
+  raiseAreaVisible = false;
+  PHASE_ORDER.forEach(ph => { phaseConfirmed[ph] = new Set(); });
+  currentPhase = 'Pre-Flop';
+  phaseMinBet = { amount:0, firstBettorId:null };
+  smallBlindId = null; bigBlindId = null;
+  broadcast({type:'WIN_ASSIGNED', winnerId:winner.id, amount, wonChips, players});
+  broadcastPot();
+  broadcastPlayers();
+  broadcast({type:'PHASE_CHANGE', phase:'Pre-Flop'});
+  broadcast({type:'BLIND_ASSIGN', smallBlindId:null, bigBlindId:null});
+  broadcast({type:'ALLIN_UPDATE', allInPlayers:[]});
+  broadcast({type:'SIDEPOTS_UPDATE', sidePots:[]});
+  renderGamePlayers();
+  document.getElementById('sidepot-bar')?.classList.remove('visible');
+  closeWinModal();
+  updateAllInState();
+  updatePhaseButtons();
+  showToast(winner.name+' vince '+amount+'! 🏆','success');
+  addLogEntry('Piatto','win',amount, winner.id===myId?'Tu':winner.name);
+  showResultPopup(winner.id===myId ? 'win' : 'lose');
+}
+
+// ────────────────────────────────────────────────────────────
+//  PHASE
+// ────────────────────────────────────────────────────────────
+function setPhase(phase, btn) {
+  // Solo il banchiere può cambiare fase manualmente
+  if (!isBanker) return;
+  advanceToPhase(phase);
+}
+
+function advanceToPhase(phase) {
+  currentPhase = phase;
+  // Resetta i confermati per la nuova fase
+  if (!phaseConfirmed[phase]) phaseConfirmed[phase] = new Set();
+  // Resetta la puntata minima e i contributi per fase ad ogni cambio di fase
+  phaseMinBet = { amount:0, firstBettorId:null };
+  playerPhaseBets = {};
+  raiseAreaVisible = false;
+  updatePhaseButtons();
+  updateMinBetNotice();
+  updateBetQuickActions();
+  broadcast({ type: 'PHASE_CHANGE', phase });
+  broadcast({ type: 'MIN_BET_UPDATE', phaseMinBet });
+  autoSave();
+}
+
+function updatePhaseButtons() {
+  document.querySelectorAll('.phase-btn').forEach(btn => {
+    const ph = btn.dataset.phase;
+    btn.classList.toggle('active', ph === currentPhase);
+    if (isBanker) {
+      const confirmed = phaseConfirmed[ph] ? phaseConfirmed[ph].size : 0;
+      const total = players.length;
+      const countEl = btn.querySelector('.phase-confirmed-count');
+      if (countEl) {
+        countEl.textContent = ph === currentPhase && ph !== 'Showdown' ? `${confirmed}/${total} giocatori` : '';
+      }
+      btn.classList.toggle('all-confirmed', ph === currentPhase && ph !== 'Showdown' && total > 0 && confirmed >= total);
+    }
+  });
+  updatePuntaButtons();
+}
+
+function checkPhaseAdvance() {
+  // Chiamato dal banchiere dopo ogni POT_ADD o FOLD
+  const confirmed = phaseConfirmed[currentPhase] ? phaseConfirmed[currentPhase].size : 0;
+  const total = players.length; // tutti, inclusi foldati (che sono già segnati come confirmed)
+  updatePhaseButtons();
+  if (total > 0 && confirmed >= total) {
+    const nextIdx = PHASE_ORDER.indexOf(currentPhase) + 1;
+    if (nextIdx < PHASE_ORDER.length) {
+      const nextPhase = PHASE_ORDER[nextIdx];
+      setTimeout(() => {
+        advanceToPhase(nextPhase);
+        if (nextPhase === 'Showdown') {
+          showToast('Showdown! Nessuna puntata ammessa 🃏', 'error');
+        } else {
+          showToast('Tutti hanno puntato · Avanzamento a ' + nextPhase + ' ✦', 'success');
+        }
+      }, 600);
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  RECORD ACTION
+// ────────────────────────────────────────────────────────────
+function recordAction(type, isAllIn=false) {
+  if (currentPhase === 'Showdown') {
+    showToast('Showdown in corso · nessuna puntata ammessa','error');
+    return;
+  }
+  const inp = document.getElementById('bet-input');
+  const amount = parseInt(inp.value)||0;
+  if (amount<=0) {
+    inp.style.borderColor='#c0392b';
+    setTimeout(()=>inp.style.borderColor='',700);
+    return;
+  }
+
+  // ── Controllo: lo SB deve puntare per primo ──────────────
+  // Se c'è uno small blind assegnato e non ha ancora puntato in questa fase,
+  // nessun altro (nemmeno il banchiere) può confermare
+  if (smallBlindId && myId !== smallBlindId && !phaseMinBet.firstBettorId) {
+    const sbName = players.find(p=>p.id===smallBlindId)?.name || 'Small Blind';
+    showToast('Attendi che ' + sbName + ' (SB) apra le puntate ⏳','error');
+    // Restituisce anche le fishes pending
+    return;
+  }
+
+  // ── Controllo puntata minima ─────────────────────────────
+  const minNeeded = getMyMinBet();
+  if (amount < minNeeded) {
+    showToast('Puntata minima: ' + minNeeded + ' fishes · aumenta la puntata ⚠','error');
+    inp.style.borderColor='#c0392b';
+    setTimeout(()=>inp.style.borderColor='',800);
+    return;
+  }
+
+  // ── Blocco per giocatori foldati ──────────────────────────────────────────
+  if (foldedPlayers.has(myId)) {
+    showToast('Hai foldato questa mano · non puoi puntare 🂠','error');
+    if (Object.keys(pendingChips).length > 0) {
+      Object.entries(pendingChips).forEach(([v, q]) => { const val=parseInt(v); setChip(val,(myQtys[val]||0)+q); });
+      pendingChips = {};
+      inp.value = '';
+    }
+    return;
+  }
+
+  // ── Blocco doppia puntata: non puoi puntare di nuovo se hai già confermato
+  //    e il minimo non è cambiato da quando hai puntato ──────────────────────
+  const alreadyConfirmed = phaseConfirmed[currentPhase]?.has(myId);
+  const myCurrentPhaseBet = playerPhaseBets[myId] || 0;
+  if (alreadyConfirmed && myCurrentPhaseBet >= phaseMinBet.amount && phaseMinBet.amount > 0) {
+    showToast('Hai già confermato la puntata per questa fase ✓','error');
+    if (Object.keys(pendingChips).length > 0) {
+      Object.entries(pendingChips).forEach(([v, q]) => { const val=parseInt(v); setChip(val,(myQtys[val]||0)+q); });
+      pendingChips = {};
+      inp.value = '';
+    }
+    return;
+  }
+
+  type = 'bet';
+  const chipBreakdown = {...pendingChips};
+  pendingChips = {};
+
+  // ── Aggiorna phaseMinBet ─────────────────────────────────
+  const isFirstBet = !phaseMinBet.firstBettorId;
+  let newMinBet = phaseMinBet;
+
+  // Totale puntato da questo giocatore nella fase corrente DOPO questo raise
+  const prevPhaseBet = playerPhaseBets[myId] || 0;
+  const totalPhaseBetAfter = prevPhaseBet + amount;
+
+  // Determina se è un rialzo (raise): punta più del minimo attuale
+  const isRaise = !isFirstBet && totalPhaseBetAfter > phaseMinBet.amount;
+
+  if (currentPhase === 'Pre-Flop') {
+    if (myId === smallBlindId && isFirstBet) {
+      // SB fissa il minimo base; BB dovrà raddoppiare
+      newMinBet = { amount: totalPhaseBetAfter, firstBettorId: myId };
+    } else if (myId === bigBlindId && phaseMinBet.firstBettorId === smallBlindId) {
+      // BB punta (almeno il doppio dello SB); questo diventa il minimo per tutti gli altri
+      newMinBet = { amount: totalPhaseBetAfter, firstBettorId: myId };
+    } else if (isFirstBet) {
+      // Pre-Flop senza blind assegnato, o primo a puntare fuori ordine: fissa il minimo
+      newMinBet = { amount: totalPhaseBetAfter, firstBettorId: myId };
+    } else if (isRaise) {
+      // Qualcuno rilancia: il nuovo minimo è il totale puntato da questo giocatore
+      newMinBet = { amount: totalPhaseBetAfter, firstBettorId: myId };
+    }
+  } else {
+    // Flop/Turn/River: prima puntata (SB) fissa il minimo
+    if (isFirstBet) {
+      newMinBet = { amount: totalPhaseBetAfter, firstBettorId: myId };
+    } else if (isRaise) {
+      newMinBet = { amount: totalPhaseBetAfter, firstBettorId: myId };
+    }
+  }
+
+  // Aggiorna playerPhaseBets localmente
+  playerPhaseBets[myId] = totalPhaseBetAfter;
+
+  const entry = {phase:currentPhase, type, amount, who:'Tu', playerId:myId, chipBreakdown, isAllIn};
+  log.push({...entry, ts:new Date()});
+  addLogEntry(entry.phase, isAllIn ? 'allin' : entry.type, entry.amount, 'Tu');
+
+  const broadcastEntry = {...entry, who:myName};
+  const msg = {type:'POT_ADD', id:myId, amount, chipBreakdown, entry:broadcastEntry, newMinBet, totalPhaseBetAfter, isRaise, isAllIn};
+
+  if (isBanker) {
+    pot+=amount;
+    Object.entries(chipBreakdown).forEach(([v,q])=>{ potChips[v]=(potChips[v]||0)+q; });
+    if (!potContributions[myId]) potContributions[myId] = {};
+    Object.entries(chipBreakdown).forEach(([v,q])=>{
+      potContributions[myId][v] = (potContributions[myId][v]||0)+q;
+    });
+    if (!phaseConfirmed[currentPhase]) phaseConfirmed[currentPhase] = new Set();
+
+    // Registra all-in
+    if (isAllIn) {
+      allInPlayers.add(myId);
+      // Chi è all-in è automaticamente "confermato" per tutte le fasi rimanenti
+      PHASE_ORDER.forEach(ph => {
+        if (!phaseConfirmed[ph]) phaseConfirmed[ph] = new Set();
+        phaseConfirmed[ph].add(myId);
+      });
+      broadcast({ type: 'ALLIN_UPDATE', allInPlayers: [...allInPlayers] });
+    }
+
+    // Se c'è un rialzo, resetta le conferme di chi non ha ancora eguagliato (eccetto foldati e all-in)
+    if (isRaise && newMinBet.amount > phaseMinBet.amount) {
+      const newConfirmed = new Set();
+      players.forEach(p => {
+        if (foldedPlayers.has(p.id) || allInPlayers.has(p.id)) { newConfirmed.add(p.id); return; }
+        if ((playerPhaseBets[p.id] || 0) >= newMinBet.amount) newConfirmed.add(p.id);
+      });
+      phaseConfirmed[currentPhase] = newConfirmed;
+      broadcast({ type: 'PHASE_CONFIRMED_UPDATE', confirmed: [...newConfirmed] });
+    } else {
+      phaseConfirmed[currentPhase].add(myId);
+    }
+
+    // Aggiorna e propaga il nuovo minimo
+    phaseMinBet = newMinBet;
+    // Propaga playerPhaseBets aggiornato
+    broadcast({ type: 'PLAYER_PHASE_BETS_UPDATE', playerPhaseBets });
+    broadcast({type:'MIN_BET_UPDATE', phaseMinBet});
+    // Se lo SB ha appena aperto le puntate, avvisa tutti
+    if (isFirstBet && myId === smallBlindId) {
+      broadcast({type:'BETS_OPEN', sbName: myName, amount});
+      showBetsOpenPopup(myName, amount);
+    }
+    // Ricalcola e mostra i side pots
+    renderSidePots();
+    broadcastPot();
+    broadcast({type:'LOG_ENTRY', entry:broadcastEntry});
+    updateMinBetNotice();
+    updatePhaseButtons();
+    checkPhaseAdvance();
+  } else if (bankerConn) {
+    sendMsg(bankerConn, msg);
+    if (isRaise) {
+      sendMsg(bankerConn, { type: 'PLAYER_RAISE', id: myId, newMinBet });
+    }
+    if (isFirstBet && myId === smallBlindId) {
+      showBetsOpenPopup(myName, amount);
+    }
+  }
+
+  updateAllInState();
+  updateMinBetNotice();
+  updateBetQuickActions();
+  raiseAreaVisible = false;
+  inp.value='';
+}
+
+// ────────────────────────────────────────────────────────────
+//  RESULT POPUP
+// ────────────────────────────────────────────────────────────
+function showResultPopup(type) {
+  // type: 'win' | 'lose' | 'draw'
+  const overlay = document.getElementById('result-overlay');
+  const modal   = document.getElementById('result-modal');
+  const icon    = document.getElementById('result-icon');
+  const title   = document.getElementById('result-title');
+  const sub     = document.getElementById('result-sub');
+  modal.className = 'result-modal ' + type;
+  if (type === 'win') {
+    icon.textContent  = '🏆';
+    title.textContent = 'Hai vinto! 🃏';
+    sub.textContent   = 'Il piatto è tuo.';
+  } else if (type === 'lose') {
+    icon.textContent  = '💀';
+    title.textContent = 'Hai perso!';
+    sub.textContent   = 'Meglio la prossima volta.';
+  } else {
+    icon.textContent  = '🤝';
+    title.textContent = 'Piatto azzerato';
+    sub.textContent   = 'Le fishes sono state restituite.';
+  }
+  overlay.classList.add('open');
+}
+function closeResultPopup() {
+  document.getElementById('result-overlay').classList.remove('open');
+}
+
+// ────────────────────────────────────────────────────────────
+//  CANCEL BET
+// ────────────────────────────────────────────────────────────
+function cancelBet() {
+  if (Object.keys(pendingChips).length === 0) {
+    showToast('Nessuna puntata in sospeso da annullare','error');
+    return;
+  }
+  // Restituisce ogni fish nel taglio originale
+  Object.entries(pendingChips).forEach(([v, q]) => {
+    const val = parseInt(v);
+    setChip(val, (myQtys[val] || 0) + q);
+  });
+  pendingChips = {};
+  document.getElementById('bet-input').value = '';
+  showToast('Puntata annullata · fishes restituite ↩');
+}
+
+// ────────────────────────────────────────────────────────────
+//  FOLD / CALL / RAISE  ACTIONS
+// ────────────────────────────────────────────────────────────
+
+// Determina se questo giocatore è lo SB (chi apre sempre il turno)
+// Solo lui vede l'interfaccia classica senza Fold/Vedi/Rilancia.
+function isFirstBettor() {
+  if (!smallBlindId) return true; // nessun blind assegnato = interfaccia classica per tutti
+  return myId === smallBlindId;   // solo lo SB è "primo" in ogni fase
+}
+
+// Aggiorna la visibilità dei pulsanti Fold/Vedi/Rilancia
+function updateBetQuickActions() {
+  const quickEl = document.getElementById('bet-quick-actions');
+  const raiseDiv = document.getElementById('raise-divider');
+  const callBtn  = document.getElementById('btn-call');
+  const foldedNotice = document.getElementById('folded-notice');
+  if (!quickEl) return;
+
+  const isFolded    = foldedPlayers.has(myId);
+  const isShowdown  = currentPhase === 'Showdown';
+  const iAmSB       = isFirstBettor(); // true solo se myId === smallBlindId (o nessun blind assegnato)
+
+  // Mostra avviso fold
+  if (foldedNotice) foldedNotice.classList.toggle('visible', isFolded);
+
+  const alreadyBet  = playerPhaseBets[myId] || 0;
+  const isConfirmed = phaseConfirmed[currentPhase]?.has(myId);
+  const hasMinBet   = phaseMinBet.firstBettorId && phaseMinBet.amount > 0;
+  const callAmt     = Math.max(0, phaseMinBet.amount - alreadyBet);
+  const alreadyMatched = alreadyBet >= phaseMinBet.amount && phaseMinBet.amount > 0;
+
+  // ── CASI IN CUI NASCONDERE TUTTO ──
+  // Foldato: nascondi quick actions E disabilita il pannello input classico
+  if (isFolded) {
+    quickEl.style.display = 'none';
+    if (raiseDiv) raiseDiv.style.display = 'none';
+    const betInputF = document.getElementById('bet-input');
+    const confirmBtnF = document.querySelector('.btn-bet');
+    if (betInputF) { betInputF.disabled = true; betInputF.style.opacity = '0.3'; }
+    if (confirmBtnF) { confirmBtnF.disabled = true; confirmBtnF.style.opacity = '0.3'; confirmBtnF.style.cursor = 'not-allowed'; }
+    return;
+  }
+
+  // Assicurati che input e bottone siano abilitati (reset eventuale stato disabilitato)
+  const betInputA = document.getElementById('bet-input');
+  const confirmBtnA = document.querySelector('.btn-bet');
+  if (betInputA) { betInputA.disabled = false; betInputA.style.opacity = ''; }
+  if (confirmBtnA) { confirmBtnA.disabled = false; confirmBtnA.style.opacity = ''; confirmBtnA.style.cursor = ''; }
+
+  if (isShowdown || !smallBlindId) {
+    quickEl.style.display = 'none';
+    if (raiseDiv) raiseDiv.style.display = 'none';
+    return;
+  }
+
+  if (isConfirmed && alreadyMatched) {
+    // Ho già puntato abbastanza e nessuno ha rilanciato → nascondo tutto
+    quickEl.style.display = 'none';
+    if (raiseDiv) raiseDiv.style.display = 'none';
+    return;
+  }
+
+  // ── LOGICA SB ────────────────────────────────────────────────
+  if (iAmSB) {
+    // Lo SB: vede FOLD sempre (prima di puntare), e RILANCIA solo se qualcuno ha superato
+    // la sua puntata (phaseMinBet.firstBettorId === myId ma qualcuno ha poi rilanciato,
+    // oppure è una fase successiva dove lo SB non è il firstBettorId).
+    const sbHasBet = alreadyBet > 0; // lo SB ha già fatto la sua puntata di apertura
+    const someoneRaisedOverSB = sbHasBet && hasMinBet && phaseMinBet.amount > alreadyBet;
+    // Mostra i pulsanti solo se: non ha ancora puntato (solo Fold) O qualcuno ha rilanciato sopra
+    if (!sbHasBet || someoneRaisedOverSB) {
+      quickEl.style.display = 'flex';
+      // Nasconde "Vedi" per lo SB (lui apre, non deve "eguagliare" se non c'è rialzo)
+      if (callBtn) {
+        if (someoneRaisedOverSB) {
+          // Qualcuno ha rilanciato sopra lo SB: mostra anche Vedi
+          callBtn.style.display = 'flex';
+          callBtn.textContent = callAmt > 0 ? `= Vedi (${callAmt})` : '= Vedi';
+          callBtn.style.opacity = '1';
+          callBtn.style.pointerEvents = 'all';
+        } else {
+          // Lo SB non ha ancora puntato: nasconde Vedi e Rilancia, solo Fold
+          callBtn.style.display = 'none';
+          // Nasconde anche il tasto Rilancia finché lo SB non ha aperto
+          const raiseBtn = document.getElementById('bet-quick-actions')?.querySelector('.btn-raise-custom');
+          if (raiseBtn) raiseBtn.style.display = 'none';
+        }
+      }
+      if (raiseDiv) raiseDiv.style.display = raiseAreaVisible && someoneRaisedOverSB ? 'block' : 'none';
+    } else {
+      quickEl.style.display = 'none';
+      if (raiseDiv) raiseDiv.style.display = 'none';
+    }
+    return;
+  }
+
+  // ── NON-SB ───────────────────────────────────────────────────
+  // Ripristina visibilità dei bottoni (potrebbero essere stati nascosti da logica SB)
+  if (callBtn) callBtn.style.display = 'flex';
+  const raiseBtn2 = quickEl.querySelector('.btn-raise-custom');
+  if (raiseBtn2) raiseBtn2.style.display = 'flex';
+
+  // Mostro i pulsanti quick
+  quickEl.style.display = 'flex';
+
+  // Tasto "Vedi"
+  if (callBtn) {
+    callBtn.textContent = callAmt > 0 ? `= Vedi (${callAmt})` : '= Vedi';
+    callBtn.style.opacity = hasMinBet && callAmt > 0 ? '1' : '0.4';
+    callBtn.style.pointerEvents = hasMinBet && callAmt > 0 ? 'all' : 'none';
+  }
+
+  // Mostra/nascondi il raise area (campo input)
+  if (raiseDiv) raiseDiv.style.display = raiseAreaVisible ? 'block' : 'none';
+}
+
+function showRaiseArea() {
+  raiseAreaVisible = true;
+  const raiseDiv = document.getElementById('raise-divider');
+  if (raiseDiv) raiseDiv.style.display = 'block';
+  const inp = document.getElementById('bet-input');
+  if (inp) {
+    inp.focus();
+    // Pre-compila con il minimo + 1
+    const minNeeded = getMyMinBet();
+    if (!inp.value || parseInt(inp.value) < minNeeded) inp.value = minNeeded;
+  }
+}
+
+// FOLD: rinuncia alla mano, fishes già puntate restano nel piatto
+function doFold() {
+  if (currentPhase === 'Showdown') {
+    showToast('Non puoi foldare allo Showdown','error');
+    return;
+  }
+  if (foldedPlayers.has(myId)) {
+    showToast('Hai già foldato questa mano','error');
+    return;
+  }
+
+  // Restituisce le fishes pending (non ancora confermate al piatto) 
+  // Le fishes già inviate al piatto restano lì
+  if (Object.keys(pendingChips).length > 0) {
+    Object.entries(pendingChips).forEach(([v, q]) => {
+      const val = parseInt(v);
+      setChip(val, (myQtys[val] || 0) + q);
+    });
+    pendingChips = {};
+    document.getElementById('bet-input').value = '';
+  }
+
+  foldedPlayers.add(myId);
+  const entry = { phase: currentPhase, type: 'fold', amount: 0, who: 'Tu', playerId: myId };
+  log.push({...entry, ts: new Date()});
+  addLogEntry(entry.phase, entry.type, 0, 'Tu');
+
+  const broadcastEntry = {...entry, who: myName};
+
+  if (isBanker) {
+    if (!phaseConfirmed[currentPhase]) phaseConfirmed[currentPhase] = new Set();
+    phaseConfirmed[currentPhase].add(myId);
+    broadcast({ type: 'FOLD_UPDATE', id: myId, foldedPlayers: [...foldedPlayers], entry: broadcastEntry });
+    // Non serve LOG_ENTRY separato: i client loggano dentro FOLD_UPDATE
+    renderGamePlayers();
+    updatePhaseButtons();
+    checkPhaseAdvanceWithFolds();
+  } else if (bankerConn) {
+    sendMsg(bankerConn, { type: 'PLAYER_FOLD', id: myId, entry: broadcastEntry });
+  }
+
+  updateBetQuickActions();
+  updateMinBetNotice();
+  showToast('Hai foldato · Le tue fishes restano nel piatto 🂠', 'error');
+  autoSave();
+}
+
+// CALL: equipara esattamente la puntata minima corrente
+function doCall() {
+  if (foldedPlayers.has(myId)) { showToast('Hai già foldato','error'); return; }
+  if (currentPhase === 'Showdown') { showToast('Showdown in corso','error'); return; }
+
+  const alreadyBet = playerPhaseBets[myId] || 0;
+  const callAmount = Math.max(0, phaseMinBet.amount - alreadyBet);
+
+  if (callAmount <= 0) {
+    showToast('Hai già equiparato la puntata ✓', 'success');
+    return;
+  }
+
+  // Verifica che il giocatore abbia abbastanza fishes
+  const myTotal = CHIPS.reduce((s,c)=>s+c.value*(myQtys[c.value]||0),0);
+  if (myTotal < callAmount) {
+    showToast('Non hai abbastanza fishes per equiparare · Usa tutto il tuo stack', 'error');
+    return;
+  }
+
+  // Sottrai le fishes automaticamente (usa i tagli in ordine decrescente)
+  let remaining = callAmount;
+  const breakdown = {};
+  const sortedChips = [...CHIPS].sort((a,b) => b.value - a.value);
+  sortedChips.forEach(chip => {
+    const avail = myQtys[chip.value] || 0;
+    if (avail > 0 && remaining > 0) {
+      const needed = Math.floor(remaining / chip.value);
+      const take = Math.min(needed, avail);
+      if (take > 0) {
+        breakdown[chip.value] = take;
+        remaining -= take * chip.value;
+        setChip(chip.value, avail - take);
+      }
+    }
+  });
+
+  if (remaining > 0) {
+    // Non si riesce a fare esattamente il callAmount con i tagli disponibili: annulla
+    // Ripristina
+    Object.entries(breakdown).forEach(([v,q])=>{
+      const val=parseInt(v);
+      setChip(val,(myQtys[val]||0)+q);
+    });
+    showToast('Non puoi fare esattamente ' + callAmount + ' con le tue fishes','error');
+    return;
+  }
+
+  // Imposta pendingChips e bet-input poi triggera recordAction
+  pendingChips = breakdown;
+  document.getElementById('bet-input').value = callAmount;
+  recordAction('bet');
+}
+
+// ────────────────────────────────────────────────────────────
+//  ALL-IN
+// ────────────────────────────────────────────────────────────
+
+// Esegue l'All-In: scommette tutto lo stack rimasto
+function doAllIn() {
+  if (currentPhase === 'Showdown') {
+    showToast('Showdown in corso · nessuna puntata ammessa','error');
+    return;
+  }
+  if (foldedPlayers.has(myId)) {
+    showToast('Hai foldato · non puoi andare All-In 🂠','error');
+    return;
+  }
+  if (allInPlayers.has(myId)) {
+    showToast('Sei già All-In 🔥','error');
+    return;
+  }
+
+  // Annulla eventuali chips pending prima di calcolare lo stack rimanente
+  if (Object.keys(pendingChips).length > 0) {
+    Object.entries(pendingChips).forEach(([v, q]) => {
+      setChip(parseInt(v), (myQtys[parseInt(v)] || 0) + q);
+    });
+    pendingChips = {};
+    document.getElementById('bet-input').value = '';
+  }
+
+  const myTotal = CHIPS.reduce((s,c) => s + c.value * (myQtys[c.value]||0), 0);
+  if (myTotal <= 0) {
+    showToast('Non hai fishes da giocare','error');
+    return;
+  }
+
+  // Costruisce il breakdown: scala tutte le chips disponibili
+  const breakdown = {};
+  CHIPS.forEach(chip => {
+    const q = myQtys[chip.value] || 0;
+    if (q > 0) {
+      breakdown[chip.value] = q;
+      setChip(chip.value, 0);
+    }
+  });
+
+  const amount = myTotal;
+  pendingChips = breakdown;
+  document.getElementById('bet-input').value = amount;
+
+  // Registra come all-in e poi come puntata normale
+  allInPlayers.add(myId);
+
+  // Aggiorna lo stato locale e disabilita i tasti Punta
+  updateAllInState();
+
+  // Procede con la conferma della puntata
+  recordAction('bet', true /* isAllIn */);
+}
+
+// Aggiorna lo stato visivo per un all-in locale
+function updateAllInState() {
+  const isAllIn = allInPlayers.has(myId);
+  // Sbiadisce i tasti "Punta" come nello showdown
+  document.querySelectorAll('.ctrl-btn-pot').forEach(btn => {
+    btn.classList.toggle('punta-disabled', isAllIn || currentPhase === 'Showdown');
+  });
+  // Disabilita anche il bottone All-In stesso
+  const allinBtn = document.getElementById('btn-allin');
+  if (allinBtn) {
+    allinBtn.disabled = isAllIn;
+    allinBtn.style.opacity = isAllIn ? '0.3' : '';
+    allinBtn.style.cursor = isAllIn ? 'not-allowed' : '';
+    allinBtn.style.animation = isAllIn ? 'none' : '';
+  }
+  // Disabilita il bottone Conferma Puntata e Fold se all-in
+  const confirmBtn = document.querySelector('.btn-bet');
+  const foldBtn = document.querySelector('.btn-fold');
+  if (isAllIn) {
+    if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.style.opacity = '0.3'; }
+    if (foldBtn) { foldBtn.disabled = true; foldBtn.style.opacity = '0.3'; }
+  } else {
+    if (confirmBtn && !foldedPlayers.has(myId)) { confirmBtn.disabled = false; confirmBtn.style.opacity = ''; }
+    if (foldBtn && !foldedPlayers.has(myId)) { foldBtn.disabled = false; foldBtn.style.opacity = ''; }
+  }
+}
+
+// Calcola i side pots dato lo stato corrente delle contributions
+// Algoritmo standard Texas Hold'em side pot
+function computeSidePots() {
+  // Costruisce la lista dei contributi totali per giocatore
+  const contributions = {}; // playerId -> total chips value contributed
+  Object.entries(potContributions).forEach(([pid, chips]) => {
+    contributions[pid] = Object.entries(chips).reduce((s,[v,q]) => s + parseInt(v)*q, 0);
+  });
+
+  const allIds = Object.keys(contributions);
+  if (allIds.length === 0) { sidePots = []; return; }
+
+  // Ordina i giocatori all-in per contributo crescente
+  const allInIds = allIds.filter(id => allInPlayers.has(id));
+  allInIds.sort((a,b) => (contributions[a]||0) - (contributions[b]||0));
+
+  const pots = [];
+  let prevCap = 0;
+
+  for (const aiId of allInIds) {
+    const cap = contributions[aiId] || 0;
+    if (cap <= prevCap) continue; // stesso livello
+    const delta = cap - prevCap;
+    // Tutti i giocatori che hanno contribuito almeno `cap` partecipano
+    const eligible = allIds.filter(id => (contributions[id]||0) >= cap || id === aiId);
+    // Il pot è delta × numero di partecipanti
+    const amount = eligible.reduce((s, id) => {
+      const contrib = contributions[id] || 0;
+      return s + Math.min(contrib, cap) - Math.min(contrib, prevCap);
+    }, 0);
+    if (amount > 0) {
+      pots.push({ amount, eligibleIds: eligible, isAllInPot: true, allInPlayerId: aiId });
+    }
+    prevCap = cap;
+  }
+
+  // Pot principale: tutto ciò che rimane sopra l'ultimo all-in cap
+  const remaining = allIds.reduce((s, id) => {
+    return s + Math.max(0, (contributions[id]||0) - prevCap);
+  }, 0);
+  if (remaining > 0) {
+    const mainEligible = allIds.filter(id => !allInPlayers.has(id) || (contributions[id]||0) > prevCap);
+    pots.push({ amount: remaining, eligibleIds: mainEligible, isAllInPot: false });
+  }
+
+  sidePots = pots;
+}
+
+function renderSidePots() {
+  const bar = document.getElementById('sidepot-bar');
+  const list = document.getElementById('sidepot-list');
+  if (!bar || !list) return;
+
+  computeSidePots();
+
+  if (sidePots.length < 2) {
+    // Nessun side pot significativo: nascondi
+    bar.classList.remove('visible');
+    return;
+  }
+
+  bar.classList.add('visible');
+  list.innerHTML = sidePots.map((sp, i) => {
+    const eligibleNames = sp.eligibleIds.map(id => {
+      const pl = players.find(p=>p.id===id);
+      return pl ? esc(pl.name) : '?';
+    }).join(', ');
+    const label = sp.isAllInPot
+      ? `Main Pot · include All-In ${esc(players.find(p=>p.id===sp.allInPlayerId)?.name||'?')}`
+      : `Side Pot · ${sp.eligibleIds.length > 0 ? 'giocatori attivi' : ''}`;
+    return `<div class="sidepot-row">
+      <div>
+        <div class="sidepot-label">⚡ <span>${label}</span></div>
+        <div class="sidepot-eligible">Eleggibili: ${eligibleNames}</div>
+      </div>
+      <div class="sidepot-value">${sp.amount}</div>
+    </div>`;
+  }).join('');
+
+  // Broadcast ai client
+  if (isBanker) broadcast({ type: 'SIDEPOTS_UPDATE', sidePots });
+}
+
+// Versione di checkPhaseAdvance che esclude i foldati dal conteggio totale
+function checkPhaseAdvanceWithFolds() {
+  const activePlayers = players.filter(p => !foldedPlayers.has(p.id));
+  const confirmed = phaseConfirmed[currentPhase] ? phaseConfirmed[currentPhase].size : 0;
+  const total = activePlayers.length;
+  updatePhaseButtons();
+  if (total > 0 && confirmed >= players.length) { // tutti (inclusi foldati) hanno "confermato"
+    const nextIdx = PHASE_ORDER.indexOf(currentPhase) + 1;
+    if (nextIdx < PHASE_ORDER.length) {
+      const nextPhase = PHASE_ORDER[nextIdx];
+      setTimeout(() => {
+        advanceToPhase(nextPhase);
+        if (nextPhase === 'Showdown') {
+          showToast('Showdown! Nessuna puntata ammessa 🃏', 'error');
+        } else {
+          showToast('Tutti hanno puntato · Avanzamento a ' + nextPhase + ' ✦', 'success');
+        }
+      }, 600);
+    }
+  }
+}
+
+// ────────────────────────────────────────────────────────────
+//  LOG
+// ────────────────────────────────────────────────────────────
+function badgeClass(phase) {
+  if(phase==='Flop') return 'badge-flop';
+  if(phase==='Turn') return 'badge-turn';
+  if(phase==='River'||phase==='Piatto') return 'badge-river';
+  return 'badge-pre';
+}
+function typeLabel(type) {
+  if(type==='win')   return ['Vittoria','log-win'];
+  if(type==='loss')  return ['Sconfitta','log-loss'];
+  if(type==='fold')  return ['Fold','log-loss'];
+  if(type==='allin') return ['All-In 🔥','log-loss'];
+  return ['Puntata','log-bet'];
+}
+function addLogEntry(phase, type, amount, who) {
+  const c = document.getElementById('hand-log');
+  const ph = c.querySelector('div[style]'); if(ph) ph.remove();
+  const [label,cls] = typeLabel(type);
+  const sign = type==='win'?'+': type==='loss'?'−':'';
+  const e = document.createElement('div');
+  e.className='log-entry';
+  e.innerHTML=`<span class="log-phase-badge ${badgeClass(phase)}">${phase}</span>
+    <span class="log-type ${cls}">${label}</span>
+    ${who?`<span class="log-who">${esc(who)}</span>`:''}
+    <span class="log-amount">${sign}${amount}</span>`;
+  c.insertBefore(e,c.firstChild);
+}
+
+// ────────────────────────────────────────────────────────────
+//  END SESSION
+// ────────────────────────────────────────────────────────────
+function endSession() {
+  if (!log.length && !confirm('Nessuna azione registrata. Terminare comunque?')) return;
+  clearSession();
+  computeStats(); show('stats-screen');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (isBanker) broadcast({type:'SESSION_END'});
+}
+
+function computeStats() {
+  let tb=0,tw=0,tl=0,cb=0,cw=0,cl=0;
+  const pd={'Pre-Flop':{bets:0,wins:0},'Flop':{bets:0,wins:0},'Turn':{bets:0,wins:0},'River':{bets:0,wins:0}};
+  log.forEach(e=>{
+    if(e.type==='bet'){tb+=e.amount;cb++;}
+    if(e.type==='win'){tw+=e.amount;cw++;}
+    if(e.type==='loss'){tl+=e.amount;cl++;}
+    if(pd[e.phase]){
+      if(e.type==='bet'||e.type==='loss') pd[e.phase].bets+=e.amount;
+      if(e.type==='win') pd[e.phase].wins+=e.amount;
+    }
+  });
+  const net=tw-tl;
+  const ft=CHIPS.reduce((s,c)=>s+c.value*(myQtys[c.value]||0),0);
+  const st=CHIPS.reduce((s,c)=>s+c.value*(myStartQtys[c.value]||0),0);
+  const sg=document.getElementById('stats-grid');
+  sg.innerHTML=[
+    {label:'Azioni Totali',val:log.length,cls:''},
+    {label:'Vittorie',val:cw,cls:'green'},
+    {label:'Sconfitte',val:cl,cls:'red'},
+    {label:'Totale Puntato',val:tb,cls:''},
+    {label:'Totale Vinto',val:tw,cls:'green'},
+    {label:'Totale Perso',val:tl,cls:'red'},
+    {label:'Risultato Netto',val:(net>=0?'+':'')+net,cls:net>=0?'green':'red'},
+    {label:'Stack Finale',val:ft,cls:ft>=st?'green':'red'},
+  ].map(c=>`<div class="stat-card"><div class="stat-card-label">${c.label}</div><div class="stat-card-value ${c.cls}">${c.val}</div></div>`).join('');
+  const pb=document.getElementById('phase-breakdown');
+  pb.innerHTML=['Pre-Flop','Flop','Turn','River'].map(ph=>`<div class="phase-stat">
+    <div class="phase-stat-label">${ph}</div>
+    <div class="phase-stat-bets">Puntato: ${pd[ph].bets}</div>
+    <div class="phase-stat-wins">Vinto: ${pd[ph].wins}</div>
+  </div>`).join('');
+  const cs=document.getElementById('chips-summary');
+  cs.innerHTML=CHIPS.map(chip=>{
+    const sq=myStartQtys[chip.value]||0,eq=myQtys[chip.value]||0,d=eq-sq;
+    const cls=d>0?'change-pos':d<0?'change-neg':'change-neu';
+    return `<div class="chip-summary-row">
+      <div class="chip-visual-sm" style="background:${chip.color};color:${chip.textColor};width:32px;height:32px;font-size:.6rem;">${chip.value}</div>
+      <span style="color:var(--cream);font-size:.85rem;">${chip.value} — ${chip.label}</span>
+      <span style="color:rgba(255,255,255,.45);font-size:.8rem;">${sq} → ${eq}</span>
+      <span class="chip-summary-change ${cls}">${d>0?'+':''}${d}</span>
+    </div>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────────────────────
+//  NEW SESSION
+// ────────────────────────────────────────────────────────────
+function newSession() {
+  myQtys={}; myStartQtys={}; log=[]; pot=0; potChips={}; pendingChips={}; currentPhase='Pre-Flop';
+  players=[]; conns={}; bankerConn=null; isBanker=false;
+  if (peer) { try{peer.destroy();}catch(e){} peer=null; }
+  clearSession();
+  show('lobby-screen');
+  setLobbyStatus('connected','Rete disponibile · Scegli come procedere');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ────────────────────────────────────────────────────────────
+//  UTILS
+// ────────────────────────────────────────────────────────────
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function copyRoomCode() {
+  navigator.clipboard.writeText(roomCode).then(()=>{
+    const btn=document.getElementById('copy-btn');
+    btn.textContent='Copiato!'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='Copia';btn.classList.remove('copied');},2000);
+  }).catch(()=>showToast('Copia manuale: '+roomCode));
+}
+
+// ────────────────────────────────────────────────────────────
+//  INIT — ripristino sessione al caricamento
+// ────────────────────────────────────────────────────────────
+(async function init() {
+  const saved = loadSession();
+  if (saved && saved.roomCode) {
+    // Ripristina variabili di stato
+    myName      = saved.myName      || '';
+    isBanker    = saved.isBanker    || false;
+    roomCode    = saved.roomCode    || '';
+    myQtys      = saved.myQtys      || {};
+    myStartQtys = saved.myStartQtys || {};
+    setupQtys   = saved.setupQtys   || {};
+    pot         = saved.pot         || 0;
+    potChips    = saved.potChips    || {};
+    currentPhase= saved.currentPhase|| 'Pre-Flop';
+    log         = saved.log         || [];
+    players     = saved.players     || [];
+    smallBlindId= saved.smallBlindId|| null;
+    bigBlindId  = saved.bigBlindId  || null;
+    phaseMinBet = saved.phaseMinBet || { amount:0, firstBettorId:null };
+    foldedPlayers = new Set(saved.foldedPlayers || []);
+    playerPhaseBets = saved.playerPhaseBets || {};
+
+    if (isBanker) {
+      // Banchiere: rilancia il peer con lo stesso room code
+      setLobbyStatus('connecting','Ripristino lobby in corso…');
+      try {
+        peer = await makePeer(roomCode);
+        peer.on('connection', handleIncoming);
+        peer.on('disconnected', ()=>peer.reconnect());
+
+        document.getElementById('room-code-value').textContent = roomCode;
+        buildSetup();
+
+        const screen = saved.screen || 'setup-screen';
+        if (screen === 'game-screen') {
+          launchGameUI();
+          document.querySelectorAll('.phase-btn').forEach(b=>{
+            b.classList.toggle('active', b.textContent.trim()===currentPhase);
+          });
+        } else {
+          show('setup-screen');
+          renderSetupPlayers();
+        }
+        setLobbyStatus('connected','Lobby ripristinata · In attesa dei giocatori');
+        showToast('Sessione ripristinata ✓','success');
+      } catch(e) {
+        setLobbyStatus('error','Errore ripristino lobby.');
+        clearSession();
+        setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+      }
+    } else {
+      // Giocatore: riconnettiti automaticamente
+      const screen = saved.screen || 'waiting-screen';
+      if (screen === 'game-screen' || screen === 'waiting-screen') {
+        setLobbyStatus('connecting','Riconnessione in corso…');
+        await joinLobby(true);
+      } else {
+        setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+      }
+    }
+  } else {
+    setTimeout(()=>setLobbyStatus('connected','Rete disponibile · Scegli come procedere'), 600);
+  }
+})();
+</script>
+<!-- BETS OPEN POPUP -->
+<div class="bets-open-overlay" id="bets-open-overlay">
+  <div class="bets-open-modal">
+    <div class="bets-open-icon">🟢</div>
+    <div class="bets-open-title">Puntate Aperte!</div>
+    <div class="bets-open-sub"><strong id="bets-open-sb" style="color:var(--gold-light);"></strong> (SB) ha aperto con <strong id="bets-open-amount" style="color:var(--gold-light);"></strong> fishes.<br>Tutti possono ora puntare.</div>
+    <button class="bets-open-close" onclick="closeBetsOpenPopup()">Capito ✓</button>
+  </div>
+</div>
+
+<!-- RESULT POPUP -->
+<div class="result-overlay" id="result-overlay">
+  <div class="result-modal" id="result-modal">
+    <div class="result-icon" id="result-icon">🃏</div>
+    <div class="result-title" id="result-title"></div>
+    <div class="result-sub" id="result-sub"></div>
+    <button class="result-close-btn" onclick="closeResultPopup()">Nuova Partita</button>
+  </div>
+</div>
+
+</body>
+</html>

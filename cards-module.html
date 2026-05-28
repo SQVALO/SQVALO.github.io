@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<!--
+╔══════════════════════════════════════════════════════════════════╗
+║         SHARKY'S CASINO — MODULO CARTE (Texas Hold'em)          ║
+║         Estratto da cards.html — pronto per l'integrazione       ║
+╠══════════════════════════════════════════════════════════════════╣
+║  COME INTEGRARE IN UNA NUOVA VERSIONE:                           ║
+║                                                                  ║
+║  1. CSS  → copia il blocco <style> dentro il <style> principale  ║
+║  2. HTML → incolla il blocco <!-- TAVOLO CARTE --> subito dopo   ║
+║            il <div class="sidepot-bar"> nel game-screen          ║
+║  3. JS   → copia il blocco <script> dentro il <script>          ║
+║            principale, PRIMA di broadcastBlind()                 ║
+║  4. Stato globale → aggiungi le 4 variabili indicate nella       ║
+║            sezione "// ── STATO GLOBALE CARTE"                   ║
+║  5. Aggancia → chiama le funzioni hook indicate in fondo         ║
+╚══════════════════════════════════════════════════════════════════╝
+-->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     1. CSS — incolla dentro il blocco <style> esistente
+     Posizionamento suggerito: prima del commento "/* RESULT POPUP */"
+════════════════════════════════════════════════════════════════ -->
+<style id="CARDS_CSS_BLOCK">
+
+/* ═══════════════════════════════════════════════════════════
+   CARTE & TAVOLO
+═══════════════════════════════════════════════════════════ */
+.table-area{background:rgba(10,60,25,.6);border:2px solid rgba(201,162,39,.25);border-radius:16px;padding:20px 16px;margin-bottom:20px;position:relative;}
+.table-area-title{font-size:.62rem;color:rgba(201,162,39,.6);letter-spacing:.22em;text-transform:uppercase;text-align:center;margin-bottom:14px;}
+
+/* Community cards strip */
+.community-cards{display:flex;gap:8px;justify-content:center;align-items:center;min-height:80px;flex-wrap:wrap;}
+.community-placeholder{width:52px;height:76px;border:2px dashed rgba(255,255,255,.12);border-radius:7px;background:rgba(0,0,0,.2);}
+
+/* Hole cards per giocatore nella lista tavolo */
+.player-hole-cards{display:flex;gap:4px;margin-left:auto;}
+
+/* Card component */
+.card{width:52px;height:76px;border-radius:7px;background:#fff;border:1px solid rgba(0,0,0,.15);box-shadow:0 2px 8px rgba(0,0,0,.5);display:flex;flex-direction:column;justify-content:space-between;padding:3px 4px;position:relative;flex-shrink:0;transition:transform .25s,box-shadow .25s;}
+.card.red .card-rank,.card.red .card-suit-center{color:#c0392b;}
+.card.black .card-rank,.card.black .card-suit-center{color:#1a1a1a;}
+.card-rank{font-size:.72rem;font-weight:900;line-height:1;font-family:'Arial',sans-serif;}
+.card-rank-bottom{font-size:.72rem;font-weight:900;line-height:1;font-family:'Arial',sans-serif;transform:rotate(180deg);align-self:flex-end;}
+.card-suit-center{font-size:1.5rem;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);line-height:1;}
+.card.back{background:linear-gradient(135deg,#0d3b1e 0%,#1a6e35 50%,#0d3b1e 100%);border:2px solid rgba(201,162,39,.5);}
+.card.back::after{content:'🂠';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:2rem;opacity:.4;}
+.card.deal-anim{animation:dealCard .35s ease-out;}
+@keyframes dealCard{0%{transform:scale(.6) translateY(-20px);opacity:0;}100%{transform:scale(1) translateY(0);opacity:1;}}
+.card.reveal-anim{animation:revealCard .4s ease-out;}
+@keyframes revealCard{0%{transform:rotateY(90deg);opacity:.2;}100%{transform:rotateY(0deg);opacity:1;}}
+
+/* Deck deal buttons */
+.deal-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px;}
+.btn-deal{background:linear-gradient(135deg,#1a4a8e,#2471a3,#1a4a8e);border:1px solid rgba(100,180,255,.4);border-radius:9px;color:#a8d8ff;font-family:'Cinzel',serif;font-size:.75rem;font-weight:700;letter-spacing:.12em;padding:10px 20px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.btn-deal:hover{filter:brightness(1.2);transform:translateY(-1px);}
+.btn-deal:disabled{opacity:.3;cursor:not-allowed;transform:none;filter:none;}
+
+/* Hand rank badge */
+.hand-rank-badge{display:inline-block;font-size:.52rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-left:6px;vertical-align:middle;background:rgba(100,200,120,.2);color:#6be88a;border:1px solid rgba(78,207,107,.3);}
+.hand-rank-badge.winner{background:rgba(201,162,39,.25);color:var(--gold-light);border-color:rgba(201,162,39,.5);animation:winPulse 1s infinite;}
+@keyframes winPulse{0%,100%{box-shadow:0 0 0 rgba(201,162,39,0)}50%{box-shadow:0 0 8px rgba(201,162,39,.6)}}
+
+/* Showdown reveal panel */
+.showdown-grid{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.showdown-row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.03);border-radius:8px;padding:8px 12px;flex-wrap:wrap;}
+.showdown-name{font-size:.8rem;color:var(--cream);font-weight:600;min-width:90px;}
+.showdown-cards{display:flex;gap:5px;}
+.showdown-row.winner-row{border:1px solid rgba(201,162,39,.4);background:rgba(201,162,39,.06);}
+
+</style>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     2. HTML — incolla subito DOPO </div> del blocco sidepot-bar
+     nel game-screen, prima del pannello giocatori
+════════════════════════════════════════════════════════════════ -->
+<div id="CARDS_HTML_BLOCK">
+
+  <!-- TAVOLO CARTE -->
+  <div class="table-area" id="table-area" style="display:none;">
+    <div class="table-area-title">✦ Tavolo</div>
+    <div class="community-cards" id="community-cards">
+      <div class="community-placeholder"></div>
+      <div class="community-placeholder"></div>
+      <div class="community-placeholder"></div>
+      <div class="community-placeholder"></div>
+      <div class="community-placeholder"></div>
+    </div>
+    <div class="deal-bar" id="deal-bar"></div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     3. JS — incolla nel blocco <script> principale,
+     subito PRIMA della funzione broadcastBlind()
+════════════════════════════════════════════════════════════════ -->
+<script id="CARDS_JS_BLOCK">
+
+// ── STATO GLOBALE CARTE ──────────────────────────────────────
+// Aggiungi queste 4 variabili accanto alle altre variabili globali
+// (vicino a: let sidePots = []; )
+//
+//   let deck           = [];
+//   let holeCards      = {};
+//   let communityCards = [];
+//   let cardsDealt     = false;
+//
+// Poi nei tre reset (launchGameUI, clearPot, confirmWin) aggiungi:
+//   deck=[]; holeCards={}; communityCards=[]; cardsDealt=false;
+//   window._revealedHoleCards = null;
+//
+// In clearPot aggiungi anche:
+//   const sp=document.getElementById('showdown-panel');if(sp)sp.style.display='none';
+//   renderTableArea(); renderGamePlayers();
+//
+// In confirmWin lascia le carte visibili (review post-mano):
+//   // le carte restano — il banchiere usa "↺ Nuova Mano" quando pronto
+
+// ════════════════════════════════════════════════════════════
+//  MOTORE CARTE
+// ════════════════════════════════════════════════════════════
+
+const SUITS   = ['♠','♥','♦','♣'];
+const RANKS   = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const RED_SUITS = new Set(['♥','♦']);
+
+function buildDeck() {
+  const d = [];
+  for (const s of SUITS) for (const r of RANKS)
+    d.push({ suit:s, rank:r, value: RANKS.indexOf(r)+2 });
+  return d;
+}
+
+function shuffleDeck(d) {
+  const a = [...d];
+  for (let i=a.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// ── Render carta HTML ─────────────────────────────────────────
+function cardHTML(card, extraClass='') {
+  if (!card) return `<div class="card back ${extraClass}"></div>`;
+  const col = RED_SUITS.has(card.suit) ? 'red' : 'black';
+  return `<div class="card ${col} ${extraClass}">
+    <div class="card-rank">${card.rank}<br><span style="font-size:.6rem">${card.suit}</span></div>
+    <div class="card-suit-center">${card.suit}</div>
+    <div class="card-rank-bottom">${card.rank}<br><span style="font-size:.6rem">${card.suit}</span></div>
+  </div>`;
+}
+
+// ── Distribuzione — solo banchiere ───────────────────────────
+function dealCards() {
+  if (!isBanker) return;
+  if (players.length < 2) { showToast('Servono almeno 2 giocatori','error'); return; }
+  deck = shuffleDeck(buildDeck());
+  holeCards = {};
+  const order = [...players];
+  // 2 giri: ogni giocatore riceve 1 carta per giro (stile classico)
+  for (let i=0; i<2; i++) {
+    order.forEach(p => {
+      if (!holeCards[p.id]) holeCards[p.id] = [];
+      holeCards[p.id].push(deck.pop());
+    });
+  }
+  communityCards = [];
+  deck.pop(); // burn card
+  cardsDealt = true;
+
+  // Invia a ogni giocatore SOLO le sue carte (le altrui restano coperte)
+  players.forEach(p => {
+    if (p.id === myId) return; // banchiere gestisce le sue localmente
+    const conn = conns[p.id];
+    if (conn) sendMsg(conn, { type:'DEAL_CARDS', myCards: holeCards[p.id], communityCards:[] });
+  });
+
+  renderTableArea();
+  renderGamePlayers();
+  showToast('Carte distribuite 🃏','success');
+  autoSave();
+}
+
+// ── Community cards ───────────────────────────────────────────
+function dealFlop() {
+  if (!isBanker || !cardsDealt) return;
+  if (communityCards.length >= 3) { showToast('Flop già rivelato','error'); return; }
+  deck.pop(); // burn
+  communityCards.push(deck.pop(), deck.pop(), deck.pop());
+  broadcast({ type:'COMMUNITY_UPDATE', communityCards, stage:'flop' });
+  renderTableArea();
+  showToast('Flop ✦','success');
+}
+
+function dealTurn() {
+  if (!isBanker || communityCards.length < 3) { showToast('Prima rivela il Flop','error'); return; }
+  if (communityCards.length >= 4) { showToast('Turn già rivelato','error'); return; }
+  deck.pop(); // burn
+  communityCards.push(deck.pop());
+  broadcast({ type:'COMMUNITY_UPDATE', communityCards, stage:'turn' });
+  renderTableArea();
+  showToast('Turn ✦','success');
+}
+
+function dealRiver() {
+  if (!isBanker || communityCards.length < 4) { showToast('Prima rivela il Turn','error'); return; }
+  if (communityCards.length >= 5) { showToast('River già rivelato','error'); return; }
+  deck.pop(); // burn
+  communityCards.push(deck.pop());
+  broadcast({ type:'COMMUNITY_UPDATE', communityCards, stage:'river' });
+  renderTableArea();
+  showToast('River ✦','success');
+}
+
+// ── Showdown: rivela tutte le hole cards ─────────────────────
+function revealShowdown() {
+  if (!isBanker) return;
+  broadcast({ type:'SHOWDOWN_REVEAL', holeCards });
+  window._revealedHoleCards = holeCards;
+  renderShowdownPanel();
+  renderTableArea();
+}
+
+// ── Reset mazzo per nuova mano ────────────────────────────────
+function resetCards() {
+  if (!isBanker) return;
+  deck=[]; holeCards={}; communityCards=[]; cardsDealt=false;
+  window._revealedHoleCards = null;
+  broadcast({ type:'CARDS_RESET' });
+  const sp = document.getElementById('showdown-panel');
+  if (sp) sp.style.display='none';
+  renderTableArea();
+  renderGamePlayers();
+  showToast('Nuova mano · mazzo azzerato ↺','success');
+}
+
+// ── Render pannello tavolo ────────────────────────────────────
+function renderTableArea() {
+  const area = document.getElementById('table-area');
+  const cc   = document.getElementById('community-cards');
+  const db   = document.getElementById('deal-bar');
+  if (!area) return;
+  area.style.display = 'block';
+
+  // 5 slot community cards
+  cc.innerHTML = '';
+  for (let i=0; i<5; i++) {
+    const card = communityCards[i];
+    cc.innerHTML += card
+      ? cardHTML(card, 'deal-anim')
+      : '<div class="community-placeholder"></div>';
+  }
+
+  // Deal bar visibile solo al banchiere
+  if (!isBanker) { db.style.display='none'; return; }
+  db.style.display = 'flex';
+  db.innerHTML = '';
+
+  if (!cardsDealt) {
+    db.innerHTML = `<button class="btn-deal" onclick="dealCards()">🃏 Distribuisci Carte</button>`;
+  } else {
+    if (communityCards.length === 0)
+      db.innerHTML += `<button class="btn-deal" onclick="dealFlop()">🂠 Rivela Flop</button>`;
+    else if (communityCards.length === 3)
+      db.innerHTML += `<button class="btn-deal" onclick="dealTurn()">🂠 Rivela Turn</button>`;
+    else if (communityCards.length === 4)
+      db.innerHTML += `<button class="btn-deal" onclick="dealRiver()">🂠 Rivela River</button>`;
+    else if (communityCards.length === 5)
+      db.innerHTML += `<button class="btn-deal" onclick="revealShowdown()">👁 Showdown Reveal</button>`;
+
+    db.innerHTML += `<button class="btn-deal"
+      style="background:linear-gradient(135deg,#3a1a0a,#6b3010);border-color:rgba(255,150,80,.3);color:#ffb080;"
+      onclick="resetCards()">↺ Nuova Mano</button>`;
+  }
+}
+
+// ── Render pannello showdown ──────────────────────────────────
+function renderShowdownPanel() {
+  let panel = document.getElementById('showdown-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'showdown-panel';
+    panel.className = 'panel';
+    panel.innerHTML = '<div class="panel-title">✦ Showdown</div><div class="showdown-grid" id="showdown-grid"></div>';
+    document.getElementById('table-area')?.insertAdjacentElement('afterend', panel);
+  }
+  panel.style.display = 'block';
+  const grid = document.getElementById('showdown-grid');
+  if (!grid) return;
+
+  const allHoles = isBanker ? holeCards : (window._revealedHoleCards || {});
+  const active   = players.filter(p => !foldedPlayers.has(p.id));
+  const evals    = active.map(p => {
+    const hole = allHoles[p.id] || [];
+    const all  = [...hole, ...communityCards];
+    const ev   = all.length >= 5 ? evaluateHand(all) : { rank:0, name:'–' };
+    return { p, hole, ev };
+  }).sort((a,b) => b.ev.rank - a.ev.rank);
+
+  const top = evals[0]?.ev.rank || 0;
+  grid.innerHTML = evals.map(({ p, hole, ev }) => {
+    const win = ev.rank === top && top > 0;
+    return `<div class="showdown-row ${win?'winner-row':''}">
+      <div class="showdown-name">${esc(p.name)}${win?'<span class="hand-rank-badge winner">🏆 Vincitore</span>':''}</div>
+      <div class="showdown-cards">${hole.length
+        ? hole.map(c=>cardHTML(c,'reveal-anim')).join('')
+        : '<span style="font-size:.7rem;color:rgba(255,255,255,.3)">carte non disponibili</span>'}</div>
+      <span class="hand-rank-badge">${ev.name}</span>
+    </div>`;
+  }).join('');
+
+  // Auto-seleziona il vincitore nel modal assegna (banchiere)
+  if (isBanker && evals[0]) {
+    selectedWinner = evals[0].p.id;
+    showToast(`Mano migliore: ${evals[0].p.name} — ${evals[0].ev.name} 🏆`, 'success');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  HAND EVALUATOR — migliori 5 tra N carte (Texas Hold'em)
+//
+//  Sistema di ranking con gap 1.000.000 tra categorie,
+//  kicker codificati in base 15 → mai sovrapposizione tra
+//  categorie diverse. Tie-breaking corretto per tutti i casi.
+// ════════════════════════════════════════════════════════════
+
+function combinations(arr, k) {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  const [f, ...r] = arr;
+  return [
+    ...combinations(r, k-1).map(c => [f, ...c]),
+    ...combinations(r, k)
+  ];
+}
+
+function evaluate5(hand) {
+  const B   = 15;       // base per encoding kicker (valori carte: 2–14)
+  const CAT = 1000000;  // gap tra categorie — garantisce ordinamento corretto
+
+  const vals  = hand.map(c => c.value).sort((a,b) => b-a);
+  const suits = hand.map(c => c.suit);
+  const counts = {};
+  vals.forEach(v => counts[v] = (counts[v]||0)+1);
+
+  const freq = Object.values(counts).sort((a,b) => b-a);
+  const isFlush = suits.every(s => s === suits[0]);
+  const uniq = [...new Set(vals)];
+  const isStr =
+    (uniq.length === 5 && vals[0]-vals[4] === 4) ||
+    (vals[0]===14 && vals[1]===5 && vals[2]===4 && vals[3]===3 && vals[4]===2); // ruota A-5
+
+  // Ordina: frequenza desc, poi valore desc
+  const grouped = Object.keys(counts).map(Number)
+    .sort((a,b) => counts[a]!==counts[b] ? counts[b]-counts[a] : b-a);
+
+  // Codifica fino a 5 valori in base B (kicker tiebreak)
+  const enc = (...vs) => vs.reduce((acc,v) => acc*B + v, 0);
+
+  let rank, name;
+
+  if (isFlush && isStr) {
+    const royal = vals[0]===14 && vals[1]===13;
+    const high  = (vals[0]===14 && vals[1]===5) ? 5 : vals[0]; // scala bassa
+    rank = royal ? 9*CAT : 8*CAT + high;
+    name = royal ? 'Royal Flush' : 'Straight Flush';
+
+  } else if (freq[0] === 4) {
+    rank = 7*CAT + enc(grouped[0], grouped[1]);
+    name = 'Poker';
+
+  } else if (freq[0]===3 && freq[1]===2) {
+    rank = 6*CAT + enc(grouped[0], grouped[1]);
+    name = 'Full House';
+
+  } else if (isFlush) {
+    rank = 5*CAT + enc(vals[0], vals[1], vals[2], vals[3], vals[4]);
+    name = 'Flush';
+
+  } else if (isStr) {
+    const high = (vals[0]===14 && vals[1]===5) ? 5 : vals[0];
+    rank = 4*CAT + high;
+    name = 'Scala';
+
+  } else if (freq[0] === 3) {
+    rank = 3*CAT + enc(grouped[0], grouped[1], grouped[2]);
+    name = 'Tris';
+
+  } else if (freq[0]===2 && freq[1]===2) {
+    const pairs  = grouped.filter(v => counts[v]===2).sort((a,b) => b-a);
+    const kicker = grouped.find(v => counts[v]===1);
+    rank = 2*CAT + enc(pairs[0], pairs[1], kicker||0);
+    name = 'Doppia Coppia';
+
+  } else if (freq[0] === 2) {
+    rank = 1*CAT + enc(grouped[0], grouped[1], grouped[2], grouped[3]);
+    name = 'Coppia';
+
+  } else {
+    // Carta Alta — categoria 0 (rank < 1.000.000 per qualsiasi combinazione)
+    rank = enc(vals[0], vals[1], vals[2], vals[3], vals[4]);
+    name = 'Carta Alta';
+  }
+
+  return { rank, name };
+}
+
+function evaluateHand(cards) {
+  if (cards.length < 5) return { rank:0, name:'–' };
+  if (cards.length === 5) return evaluate5(cards);
+  // Prova tutte le combinazioni di 5 tra N, torna la migliore
+  return combinations(cards, 5).reduce((best, combo) => {
+    const ev = evaluate5(combo);
+    return ev.rank > best.rank ? ev : best;
+  }, { rank:0, name:'–' });
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  GESTORI MESSAGGI P2P — lato client (non-banchiere)
+//
+//  Incolla questi blocchi if() dentro la funzione
+//  onDataFromBanker(), prima del blocco SESSION_END
+// ════════════════════════════════════════════════════════════
+
+/*
+
+  // ── Ricevi le tue hole cards ──────────────────────────────
+  if (data.type==='DEAL_CARDS') {
+    holeCards[myId] = data.myCards || [];
+    communityCards  = data.communityCards || [];
+    cardsDealt = true;
+    renderTableArea();
+    renderGamePlayers();
+    showToast('Le tue carte sono arrivate 🃏','success');
+    autoSave();
+  }
+
+  // ── Aggiornamento community cards (flop/turn/river) ───────
+  if (data.type==='COMMUNITY_UPDATE') {
+    communityCards = data.communityCards || [];
+    const stageLabel = {flop:'Flop', turn:'Turn', river:'River'}[data.stage] || '';
+    renderTableArea();
+    if (stageLabel) showToast(`${stageLabel} rivelato ✦`,'success');
+    autoSave();
+  }
+
+  // ── Showdown: rivela le carte di tutti ────────────────────
+  if (data.type==='SHOWDOWN_REVEAL') {
+    window._revealedHoleCards = data.holeCards || {};
+    renderShowdownPanel();
+    renderTableArea();
+    autoSave();
+  }
+
+  // ── Reset mazzo per nuova mano ────────────────────────────
+  if (data.type==='CARDS_RESET') {
+    deck=[]; holeCards={}; communityCards=[]; cardsDealt=false;
+    window._revealedHoleCards = null;
+    const sp = document.getElementById('showdown-panel');
+    if (sp) sp.style.display='none';
+    renderTableArea();
+    renderGamePlayers();
+    autoSave();
+  }
+
+*/
+
+
+// ════════════════════════════════════════════════════════════
+//  HOOK openWinModal — valutazione mani nel modal vincitore
+//
+//  Sostituisci la funzione openWinModal() esistente con questa,
+//  oppure incolla il blocco di valutazione all'inizio di quella
+//  esistente (prima del loop players.forEach).
+// ════════════════════════════════════════════════════════════
+
+/*
+
+function openWinModal() {
+  if (pot===0) { showToast('Il piatto è vuoto','error'); return; }
+  selectedWinner = null;
+  const el = document.getElementById('modal-players-list');
+  el.innerHTML = '';
+
+  // Valuta le mani se le carte sono disponibili (almeno flop)
+  const allHoles = holeCards || {};
+  const hasCards = communityCards.length >= 3 && Object.keys(allHoles).length > 0;
+  let evals = {}, suggestedWinner = null, bestRank = -1;
+
+  if (hasCards) {
+    players.filter(p => !foldedPlayers.has(p.id)).forEach(p => {
+      const hole = allHoles[p.id] || [];
+      const all  = [...hole, ...communityCards];
+      const ev   = all.length >= 5 ? evaluateHand(all) : { rank:0, name:'–' };
+      evals[p.id] = ev;
+      if (ev.rank > bestRank) { bestRank=ev.rank; suggestedWinner=p.id; }
+    });
+  }
+
+  // Side pots notice (se presente nel progetto)
+  if (typeof sidePots !== 'undefined' && sidePots.length >= 2) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.7rem;color:var(--gold-light);letter-spacing:.06em;line-height:1.6;';
+    notice.innerHTML = '<strong>⚡ Side Pots attivi</strong><br>' + sidePots.map(sp => {
+      const names = sp.eligibleIds.map(id => players.find(p=>p.id===id)?.name||'?').join(', ');
+      return `${sp.isAllInPot?'Main Pot (All-In)':'Side Pot'}: <strong>${sp.amount}</strong> · ${names}`;
+    }).join('<br>');
+    el.appendChild(notice);
+  }
+
+  // Lista giocatori con mano valutata
+  players.forEach(pl => {
+    const stack      = CHIPS.reduce((s,c) => s+c.value*(pl.qtys[c.value]||0), 0);
+    const isAllIn    = typeof allInPlayers !== 'undefined' && allInPlayers.has(pl.id);
+    const isFolded   = foldedPlayers.has(pl.id);
+    const ev         = evals[pl.id];
+    const isSugg     = pl.id === suggestedWinner;
+    const btn        = document.createElement('button');
+    btn.className    = 'modal-player-btn' + (isSugg ? ' selected' : '');
+    const handBadge  = ev ? `<span class="hand-rank-badge ${isSugg?'winner':''}" style="margin-left:8px;">${ev.name}</span>` : '';
+    const holePics   = (allHoles[pl.id]||[]).map(c => cardHTML(c)).join('');
+    const holeDiv    = holePics ? `<div style="display:flex;gap:3px;margin-top:4px;">${holePics}</div>` : '';
+    btn.innerHTML = `<div class="player-avatar">🃏</div>
+      <div style="flex:1">
+        <div class="modal-player-name">${esc(pl.name)}${isAllIn?'<span class="allin-badge">ALL-IN</span>':''}${isFolded?'<span class="fold-badge" style="margin-left:6px;">Fold</span>':''}${handBadge}</div>
+        ${holeDiv}
+        <div class="modal-player-stack">Stack: ${stack}</div>
+      </div>`;
+    btn.onclick = () => {
+      document.querySelectorAll('.modal-player-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedWinner = pl.id;
+    };
+    el.appendChild(btn);
+  });
+
+  if (suggestedWinner) selectedWinner = suggestedWinner;
+  document.getElementById('win-modal').classList.add('open');
+}
+
+*/
+
+
+// ════════════════════════════════════════════════════════════
+//  HOOK renderGamePlayers — mostra hole cards nella lista
+//
+//  Aggiungi questo blocco DENTRO renderGamePlayers(), subito
+//  prima del return del template HTML di ogni player-row,
+//  dopo aver costruito blindBadge/foldBadge/allInBadge.
+// ════════════════════════════════════════════════════════════
+
+/*
+
+    // Hole cards: mostra le tue, copri le altrui (a meno che showdown reveal)
+    let cardsHtml = '';
+    if (cardsDealt) {
+      const revealed = window._revealedHoleCards || {};
+      const isMe = pl.id === myId;
+      const cards = isMe ? (holeCards[myId]||[]) : (revealed[pl.id]||null);
+      if (isMe && cards.length) {
+        cardsHtml = `<div class="player-hole-cards">${cards.map(c=>cardHTML(c)).join('')}</div>`;
+      } else if (!isMe && cards) {
+        // Showdown: carte degli altri visibili
+        cardsHtml = `<div class="player-hole-cards">${cards.map(c=>cardHTML(c,'reveal-anim')).join('')}</div>`;
+      } else if (!isMe) {
+        // Carte coperte (back verde)
+        cardsHtml = `<div class="player-hole-cards">
+          <div class="card back" style="width:36px;height:52px;"></div>
+          <div class="card back" style="width:36px;height:52px;"></div>
+        </div>`;
+      }
+    }
+
+    // Nel template return aggiungi ${cardsHtml} tra player-role e player-stack:
+    // return `<div class="player-row ...">
+    //   ...
+    //   ${cardsHtml}
+    //   <div class="player-stack">${stack}</div>
+    // </div>`;
+
+*/
+
+
+// ════════════════════════════════════════════════════════════
+//  HOOK launchGameUI — inizializza il tavolo carte
+//
+//  Aggiungi queste righe alla fine di launchGameUI():
+// ════════════════════════════════════════════════════════════
+
+/*
+
+  // Reset carte per ogni nuova sessione di gioco
+  deck=[]; holeCards={}; communityCards=[]; cardsDealt=false;
+  window._revealedHoleCards = null;
+  renderTableArea();
+
+*/
+
+</script>
+</html>
